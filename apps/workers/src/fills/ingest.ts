@@ -1,4 +1,5 @@
 import {
+  getAccountCapitalFlows,
   getAccountFills,
   getAccountFunding,
   type StrikeClient,
@@ -8,6 +9,7 @@ import type pg from "pg";
 import type { WorkerConfig } from "../config.js";
 import { errMsg, type Logger } from "../log.js";
 import { insertRows } from "../sql.js";
+import { rebuildTrades } from "../stats/trades.js";
 
 const PAGE = 1000;
 
@@ -134,8 +136,46 @@ export class FillsIngester {
     return stored;
   }
 
-  async syncAccount(accountId: string): Promise<{ fills: number; funding: number }> {
-    return { fills: await this.syncFills(accountId), funding: await this.syncFunding(accountId) };
+  /** Deposits and withdrawals, newest first, stopping once a page overlaps what's stored. */
+  async syncTransactions(accountId: string): Promise<number> {
+    let stored = 0;
+    let fromId: string | undefined;
+    for (;;) {
+      const page = await getAccountCapitalFlows(this.client, accountId, { fromId, limit: PAGE });
+      if (page.length === 0) break;
+      const n = await insertRows(
+        this.pool,
+        "account_transactions",
+        ["account_id", "id", "type", "amount", "status", "ts_ms", "asset_symbol", "tx_hash", "raw"],
+        page.map((t) => [
+          accountId,
+          String(t.id),
+          t.type,
+          t.amount,
+          t.status,
+          t.timestamp,
+          t.asset_symbol ?? null,
+          t.tx_hash ?? null,
+          JSON.stringify(t),
+        ]),
+        "ON CONFLICT (account_id, id) DO UPDATE SET status = EXCLUDED.status, raw = EXCLUDED.raw",
+      );
+      stored += n;
+      if (page.length < PAGE) break;
+      fromId = String(page[page.length - 1]?.id);
+    }
+    return stored;
+  }
+
+  async syncAccount(
+    accountId: string,
+  ): Promise<{ fills: number; funding: number; transactions: number; trades: number }> {
+    const fills = await this.syncFills(accountId);
+    const funding = await this.syncFunding(accountId);
+    const transactions = await this.syncTransactions(accountId);
+    // Statuses of capital flows change (pending -> settled), so rebuild when anything moved.
+    const built = await rebuildTrades(this.pool, accountId, false);
+    return { fills, funding, transactions, trades: built.trades };
   }
 
   async accounts(): Promise<string[]> {

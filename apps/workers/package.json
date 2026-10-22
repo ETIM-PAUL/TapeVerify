@@ -10,7 +10,8 @@
     "start": "tsx --env-file-if-exists=../../.env src/index.ts",
     "replay": "tsx --env-file-if-exists=../../.env src/cli/replay.ts",
     "coverage": "tsx --env-file-if-exists=../../.env src/cli/coverage.ts",
-    "backfill": "tsx --env-file-if-exists=../../.env src/cli/backfill.ts"
+    "backfill": "tsx --env-file-if-exists=../../.env src/cli/backfill.ts",
+    "stats": "tsx --env-file-if-exists=../../.env src/cli/stats.ts"
   },
   "dependencies": {
     "@pit/shared": "workspace:*",

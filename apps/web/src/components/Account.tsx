@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { type AccountData, ApiError, api, type Call, type StrikeTx, type User } from "../api";
 import { shortAddr, usd } from "../format";
 import { Deposit } from "./Deposit";
+import { HandleForm } from "./HandleForm";
 import { History } from "./History";
 import { MyCalls } from "./MyCalls";
 import { NewCall } from "./NewCall";
@@ -90,6 +91,7 @@ export function Account({
           <p className="muted">No open positions.</p>
         )}
       </div>
+      <HandleForm current={user.handle} onSaved={() => {}} />
       <div className="grid2">
         <NewCall onCreated={load} />
         <MyCalls calls={calls} onChange={load} />

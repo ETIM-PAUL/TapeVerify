@@ -3,6 +3,9 @@ import { api, type User } from "./api";
 import { Account } from "./components/Account";
 import { CallPage } from "./components/CallPage";
 import { Connect } from "./components/Connect";
+import { Leaderboard } from "./components/Leaderboard";
+import { NavBar } from "./components/NavBar";
+import { Profile } from "./components/Profile";
 import { type ActiveWallet, WalletContext } from "./wallet-context";
 
 export function App() {
@@ -24,13 +27,22 @@ export function App() {
     setWallet(null);
   }, []);
 
-  const callCode = window.location.pathname.match(/^\/call\/([A-Za-z0-9]+)$/)?.[1];
-  if (!ready && !callCode) return null;
+  const path = window.location.pathname;
+  const callCode = path.match(/^\/call\/([A-Za-z0-9]+)$/)?.[1];
+  const traderRef = path.match(/^\/t\/([A-Za-z0-9_-]+)$/)?.[1];
+  const isBoard = path === "/leaderboard";
+  const publicPage = Boolean(callCode || traderRef || isBoard);
+  if (!ready && !publicPage) return null;
   return (
     <WalletContext.Provider value={{ wallet, setWallet }}>
       <main>
+        <NavBar signedIn={Boolean(user)} />
         {callCode ? (
           <CallPage code={callCode} />
+        ) : traderRef ? (
+          <Profile ref_={traderRef} />
+        ) : isBoard ? (
+          <Leaderboard />
         ) : user ? (
           <Account user={user} onLogout={logout} onExpired={logout} />
         ) : (

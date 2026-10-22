@@ -14,6 +14,7 @@ import { callsRoutes } from "./routes/calls.js";
 import { followsRoutes } from "./routes/follows.js";
 import { fundsRoutes } from "./routes/funds.js";
 import { shareRoutes } from "./routes/share.js";
+import { tradersRoutes } from "./routes/traders.js";
 import { type SessionUser, userForSession } from "./sessions.js";
 
 declare module "fastify" {
@@ -86,5 +87,6 @@ export async function buildApp(
   callsRoutes(app, d);
   followsRoutes(app, d);
   shareRoutes(app, d);
+  tradersRoutes(app, d);
   return app;
 }

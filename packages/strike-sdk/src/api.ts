@@ -179,3 +179,32 @@ export async function getAccountPositions(
   const r = await c.publicGet<{ positions: StrikePosition[] | null }>(`/v2/positions?${p}`);
   return (r.positions ?? []).filter((x) => Number(x.size) !== 0);
 }
+
+export interface StrikeAccountTx {
+  id: number | string;
+  type: string;
+  amount: string;
+  status: string;
+  timestamp: number;
+  asset_symbol?: string | null;
+  tx_hash?: string | null;
+  [k: string]: unknown;
+}
+
+/** Deposits and withdrawals of an account (public), newest first; pages backward with `fromId`. */
+export async function getAccountCapitalFlows(
+  c: StrikeClient,
+  accountId: string,
+  q: { fromId?: string; limit?: number } = {},
+): Promise<StrikeAccountTx[]> {
+  const p = new URLSearchParams({
+    account_id: accountId,
+    type: "1,2",
+    limit: String(q.limit ?? 1000),
+  });
+  if (q.fromId) p.set("fromId", q.fromId);
+  const r = await c.publicGet<{ transactions: StrikeAccountTx[] | null }>(
+    `/v2/history/transaction?${p}`,
+  );
+  return r.transactions ?? [];
+}

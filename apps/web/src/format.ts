@@ -25,3 +25,14 @@ export const TX_STATUS: Record<number, string> = {
   6: "cancelled",
 };
 export const TX_TYPE: Record<number, string> = { 1: "Deposit", 2: "Withdrawal" };
+
+export const pctText = (v: number | null | undefined, digits = 2) =>
+  v === null || v === undefined ? "—" : `${v >= 0 ? "+" : ""}${v.toFixed(digits)}%`;
+
+export function duration(ms: number | null): string {
+  if (ms === null) return "—";
+  const m = ms / 60_000;
+  if (m < 60) return `${Math.round(m)}m`;
+  const h = m / 60;
+  return h < 48 ? `${h.toFixed(1)}h` : `${(h / 24).toFixed(1)}d`;
+}

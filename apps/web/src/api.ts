@@ -122,3 +122,84 @@ export interface CallDetail {
   stats: TraderStats;
   viewer: { isOwner: boolean; follow: FollowInfo | null } | null;
 }
+
+export type Timeframe = "24h" | "7d" | "30d" | "all";
+export interface StatsOut {
+  trades: number;
+  wins: number;
+  losses: number;
+  winRate: number | null;
+  netPnl: string;
+  totalReturnPct: number | null;
+  maxDrawdownPct: number | null;
+  avgHoldMs: number | null;
+  consistency: number | null;
+  effectiveLeverage: number | null;
+  activeDays: number;
+  tradesWithoutCapital: number;
+  bestTradePnl: string | null;
+  worstTradePnl: string | null;
+}
+export interface LeaderEntry {
+  rank: number;
+  ref: string;
+  handle: string | null;
+  chain: string;
+  address: string;
+  stats: StatsOut;
+  volume: string;
+  risk: "low" | "medium" | "high" | "unknown";
+}
+export interface Leaderboard {
+  timeframe: Timeframe;
+  minimums: { trades: number; activeDays: number; volumeUsd: number };
+  total: number;
+  entries: LeaderEntry[];
+}
+export interface TradeRow {
+  id: string;
+  symbol: string;
+  side: "long" | "short";
+  openedAt: number;
+  closedAt: number;
+  size: string;
+  entryPrice: string;
+  exitPrice: string;
+  grossPnl: string;
+  fees: string;
+  funding: string;
+  netPnl: string;
+  liquidated: boolean;
+  split: boolean;
+  fills: number;
+}
+export interface Profile {
+  trader: { ref: string; handle: string | null; chain: string; address: string };
+  stats: StatsOut;
+  volume: string;
+  risk: LeaderEntry["risk"];
+  ranked: boolean;
+  unrankedReason: string | null;
+  minimums: Leaderboard["minimums"];
+  curve: Array<{ ts: number; index: number }>;
+  calls: Array<{
+    code: string;
+    symbol: string;
+    side: string;
+    leverage: number;
+    status: string;
+    entry: { price: string } | null;
+    exit: { price: string; reason: string | null; realizedPnl: string | null } | null;
+    createdAt: number;
+  }>;
+  followers: { count: number; notionalFollowed: string };
+  verification: {
+    source: string;
+    fills: number;
+    trades: number;
+    capitalFlows: number;
+    firstFillAt: number | null;
+    lastFillAt: number | null;
+    method: Record<string, string>;
+  };
+}

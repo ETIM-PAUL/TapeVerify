@@ -121,7 +121,9 @@ export function CallPage({ code }: { code: string }) {
       </div>
 
       <div className="card">
-        <h2>{trader}'s record</h2>
+        <h2>
+          {call.trader.handle ? <a href={`/t/${call.trader.handle}`}>{trader}</a> : trader}'s record
+        </h2>
         <div className="stats">
           <div className="stat">
             <span className="muted">Calls</span>
