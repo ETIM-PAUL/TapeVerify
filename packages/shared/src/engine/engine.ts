@@ -1,5 +1,6 @@
-import type { Condition, Operand, StrategySpec } from "../strategy/spec.js";
-import type { Bar, IndicatorSet, Series } from "./indicators.js";
+import type { Condition, StrategySpec } from "../strategy/spec.js";
+import { dayOf, decideOnClose, matchesCondition } from "./decide.js";
+import type { Bar, IndicatorSet } from "./indicators.js";
 import {
   builderFee,
   commission,
@@ -327,31 +328,21 @@ export class StrategyEngine {
     s.barIndex++;
     if (s.position) s.position.barsHeld++;
 
-    if (s.halted) {
-      if (s.position) s.pending = { kind: "exit", reason: "halt" };
-      return [];
-    }
-    if (s.pending) return [];
-
-    if (s.position) {
-      const cond = s.position.side === "long" ? spec.exit.exitLong : spec.exit.exitShort;
-      if (cond && this.matches(cond, bars, ind, i)) s.pending = { kind: "exit", reason: "rule" };
-      else if (spec.exit.maxHoldBars !== null && s.position.barsHeld >= spec.exit.maxHoldBars)
-        s.pending = { kind: "exit", reason: "max_hold" };
-      return [];
-    }
-
-    const { cooldownBars, maxTradesPerDay } = spec.risk;
-    if (s.lastExitBar !== null && s.barIndex - s.lastExitBar <= cooldownBars) return [];
-    if (maxTradesPerDay !== null) {
-      const day = Math.floor((bar.t + 1) / DAY);
-      const used = s.day === day ? s.tradesToday : 0;
-      if (used >= maxTradesPerDay) return [];
-    }
-    const wantsLong = spec.entry.long !== null && this.matches(spec.entry.long, bars, ind, i);
-    const wantsShort = spec.entry.short !== null && this.matches(spec.entry.short, bars, ind, i);
-    // Contradictory signals on one candle: stand aside
-    if (wantsLong !== wantsShort) s.pending = { kind: "enter", side: wantsLong ? "long" : "short" };
+    const d = decideOnClose(
+      spec,
+      {
+        halted: s.halted !== null,
+        position: s.position ? { side: s.position.side, barsHeld: s.position.barsHeld } : null,
+        pending: s.pending !== null,
+        barsSinceExit: s.lastExitBar === null ? null : s.barIndex - s.lastExitBar,
+        tradesToday: s.day === dayOf(bar) ? s.tradesToday : 0,
+      },
+      bars,
+      ind,
+      i,
+    );
+    if (d.kind === "exit") s.pending = { kind: "exit", reason: d.reason };
+    else if (d.kind === "enter") s.pending = { kind: "enter", side: d.side };
     return [];
   }
 
@@ -382,48 +373,7 @@ export class StrategyEngine {
 
   // ── Rule evaluation ──
 
-  private value(o: Operand, bars: Bar[], ind: IndicatorSet, idx: number): number | null {
-    if (idx < 0) return null;
-    if (o.kind === "number") return o.value;
-    if (o.kind === "price")
-      return (
-        bars[idx]?.[
-          (o.price as "open" | "high" | "low" | "close") === "open"
-            ? "o"
-            : o.price === "high"
-              ? "h"
-              : o.price === "low"
-                ? "l"
-                : "c"
-        ] ?? null
-      );
-    const series: Series | undefined = o.indicator ? ind.byId.get(o.indicator) : undefined;
-    return series?.[idx] ?? null;
-  }
-
   matches(c: Condition, bars: Bar[], ind: IndicatorSet, i: number): boolean {
-    const hit = (r: Condition["rules"][number]): boolean => {
-      const l = this.value(r.left, bars, ind, i);
-      const rr = this.value(r.right, bars, ind, i);
-      if (l === null || rr === null) return false;
-      switch (r.op) {
-        case ">":
-          return l > rr;
-        case "<":
-          return l < rr;
-        case ">=":
-          return l >= rr;
-        case "<=":
-          return l <= rr;
-        case "crosses_above":
-        case "crosses_below": {
-          const pl = this.value(r.left, bars, ind, i - 1);
-          const pr = this.value(r.right, bars, ind, i - 1);
-          if (pl === null || pr === null) return false;
-          return r.op === "crosses_above" ? pl <= pr && l > rr : pl >= pr && l < rr;
-        }
-      }
-    };
-    return c.match === "all" ? c.rules.every(hit) : c.rules.some(hit);
+    return matchesCondition(c, bars, ind, i);
   }
 }

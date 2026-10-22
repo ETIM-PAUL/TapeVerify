@@ -295,3 +295,31 @@ details {
 .warnlist li {
   margin: 4px 0;
 }
+button.danger {
+  background: #3a1517;
+  color: #ff9a9a;
+  border: 1px solid #5a2326;
+}
+label.check {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  font-size: 13px;
+  color: var(--muted);
+  margin: 8px 0;
+}
+label.check input {
+  width: auto;
+  margin-top: 3px;
+}
+.events {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 220px;
+  overflow: auto;
+}
+.events li {
+  padding: 3px 0;
+  border-bottom: 1px solid var(--line);
+}

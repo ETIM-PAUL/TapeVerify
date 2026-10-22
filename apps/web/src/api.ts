@@ -357,3 +357,46 @@ export interface PaperDetail {
   equityCurve: Array<{ t: number; equity: number }>;
   notes: string[];
 }
+
+export interface LiveStatus {
+  enabled: boolean;
+  network: string;
+  emergencyStop: boolean;
+  maxLeverage: number;
+}
+export interface LiveRunSummary {
+  id: string;
+  name: string;
+  market: string;
+  status: "active" | "stopping" | "stopped" | "halted" | "error";
+  stopReason: string | null;
+  budget: { maxMarginUsd: number; maxLossUsd: number };
+  startedAt: number;
+  subAccountId: string | null;
+  netPnl: number;
+  closedTrades: number;
+  inPosition: boolean;
+}
+export interface LiveRunDetail extends Omit<LiveRunSummary, "closedTrades" | "inPosition"> {
+  network: string;
+  lastBarAt: number | null;
+  lossCap: number | null;
+  failures: number;
+  trades: Array<{
+    seq: number;
+    side: string;
+    status: string;
+    size: string;
+    marginUsd: string;
+    leverage: number;
+    slPrice: string;
+    tpPrice: string | null;
+    entryPrice: string | null;
+    exitPrice: string | null;
+    exitReason: string | null;
+    realizedPnl: string | null;
+    fees: string;
+    failReason: string | null;
+  }>;
+  events: Array<{ id: number; at: number; kind: string; data: Record<string, unknown> }>;
+}

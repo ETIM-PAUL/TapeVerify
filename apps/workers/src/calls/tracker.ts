@@ -21,6 +21,8 @@ export interface TrackedCall {
   primary_client_order_id: string | null;
   tp_client_order_id: string | null;
   sl_client_order_id: string | null;
+  /** Live runs only. */
+  trail_client_order_id?: string | null;
   entry_trade_id: string | null;
   entry_size: string | null;
   entry_ts_ms: string | null;
@@ -42,7 +44,7 @@ const sum = sumSigned;
  * Nothing here trusts user input: prices and times all come from fills.
  */
 /** Both calls and follows are tracked the same way; the table name is whitelisted, never user input. */
-export type TrackedTable = "calls" | "follows";
+export type TrackedTable = "calls" | "follows" | "live_trades";
 
 export async function trackCall(
   client: StrikeClient,
@@ -134,7 +136,7 @@ export async function trackCall(
   const reason = exitReason(last, orders, call);
   const res = await pool.query(
     `UPDATE ${table} SET status = 'closed', exit_price = $2, exit_size = $3, exit_ts_ms = $4, exit_reason = $5,
-            realized_pnl = $6, updated_at = now()
+            realized_pnl = $6, exit_fee = $7, updated_at = now()
       WHERE id = $1 AND status IN ('open', 'expired')`,
     [
       call.id,
@@ -143,6 +145,7 @@ export async function trackCall(
       Math.max(...closing.map((f) => Number(f.timestamp))),
       reason,
       sum(closing.map((f) => f.realized_pnl ?? "0")),
+      sum(closing.map((f) => f.fee ?? "0")),
     ],
   );
   return res.rowCount ? "closed" : "unchanged";
@@ -157,17 +160,14 @@ function findPrimary(orders: StrikeOrder[], call: TrackedCall): StrikeOrder | un
   );
 }
 
-function exitReason(
-  last: StrikeFill,
-  orders: StrikeOrder[],
-  call: TrackedCall,
-): "tp" | "sl" | "manual" | "liquidation" | "external" {
+function exitReason(last: StrikeFill, orders: StrikeOrder[], call: TrackedCall): string {
   if (last.fee_type === "liquidation") return "liquidation";
   const order = orders.find((o) => o.id === Number(last.order_id));
   const cid = order?.client_order_id;
   if (cid && cid === call.tp_client_order_id) return "tp";
   if (cid && cid === call.sl_client_order_id) return "sl";
-  if (cid?.startsWith("pit-close-")) return "manual";
+  if (cid && cid === call.trail_client_order_id) return "trailing_stop";
+  if (cid?.startsWith("pit-close-") || cid?.startsWith("pitlive-close-")) return "manual";
   return "external"; // closed outside Pit (e.g. in Strike's own app)
 }
 
@@ -187,6 +187,7 @@ export class CallTracker {
       "UPDATE calls SET status = 'expired', updated_at = now() WHERE status = 'open' AND expires_at <= $1",
       [now],
     );
+    // Live trades are tracked by the live runner itself, in the same pass that decides what to do next.
     for (const table of ["calls", "follows"] as const) {
       const { rows } = await this.pool.query(
         `SELECT c.id, c.user_id, c.symbol, c.side, c.status, c.strategy_id, c.primary_client_order_id,

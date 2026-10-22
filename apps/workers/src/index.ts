@@ -1,10 +1,17 @@
-import { createPool, loadStrikeConfig } from "@pit/shared";
+import {
+  createPool,
+  KeyVault,
+  LocalKekProvider,
+  loadStrikeConfig,
+  StrikeGateway,
+} from "@pit/shared";
 import { getMarketSymbols, StrikeClient } from "@pit/strike-sdk";
 import { CallTracker } from "./calls/tracker.js";
 import { loadWorkerConfig } from "./config.js";
 import { FillsIngester } from "./fills/ingest.js";
 import { L3Recorder } from "./l3/recorder.js";
 import { L3Store } from "./l3/store.js";
+import { LiveRunner } from "./live/runner.js";
 import { createLogger, errMsg } from "./log.js";
 import { CandleIndexer } from "./market/candles.js";
 import { DepthPoller } from "./market/depth.js";
@@ -45,6 +52,28 @@ const paper = new PaperRunner(client, pool, log.child("paper"), {
   extraWarmup: 300,
 });
 
+// Live trading with real funds: on by default on testnet, and on mainnet only when explicitly enabled.
+const liveOn = process.env.LIVE_ENABLED
+  ? process.env.LIVE_ENABLED === "true"
+  : strike.network === "testnet";
+const live = liveOn
+  ? new LiveRunner(
+      pool,
+      new StrikeGateway(pool, new KeyVault(LocalKekProvider.fromEnv()), strike),
+      log.child("live"),
+      {
+        intervalMs: Number(process.env.LIVE_TICK_SECONDS || 10) * 1000,
+        network: strike.network,
+        builderBps: strike.builderFeeBps,
+        limits: { maxLeverage: Number(process.env.LIVE_MAX_LEVERAGE || 10) },
+        slippageBps: 5,
+        maxFailures: 3,
+        maxSignalAgeMs: 10 * 60_000,
+      },
+    )
+  : null;
+log.info("live trading", { enabled: liveOn, network: strike.network });
+
 for (const r of l3) await r.start();
 prices.start();
 candles.start();
@@ -52,6 +81,7 @@ depth.start();
 fills.start();
 calls.start();
 paper.start();
+live?.start();
 
 const retention = setInterval(
   () =>
@@ -77,6 +107,7 @@ async function shutdown(signal: string) {
   fills.stop();
   calls.stop();
   paper.stop();
+  live?.stop();
   await prices.stop();
   await Promise.all(l3.map((r) => r.stop()));
   await pool.end();

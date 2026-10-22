@@ -15,6 +15,7 @@ import { backtestsRoutes } from "./routes/backtests.js";
 import { callsRoutes } from "./routes/calls.js";
 import { followsRoutes } from "./routes/follows.js";
 import { fundsRoutes } from "./routes/funds.js";
+import { liveRoutes } from "./routes/live.js";
 import { shareRoutes } from "./routes/share.js";
 import { strategiesRoutes } from "./routes/strategies.js";
 import { tradersRoutes } from "./routes/traders.js";
@@ -95,5 +96,6 @@ export async function buildApp(
   tradersRoutes(app, d);
   strategiesRoutes(app, d);
   backtestsRoutes(app, d);
+  liveRoutes(app, d);
   return app;
 }

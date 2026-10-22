@@ -71,6 +71,14 @@ export function fakeStrike(overrides: Record<string, Handler> = {}) {
       },
     }),
     "GET /v2/markets": () => ({ body: marketsBody("80000") }),
+    "GET /v2/sub-accounts": () => ({
+      body: {
+        sub_accounts: [
+          { account_id: "sub-ok-1234", status: "active", available_balance: "500" },
+          { account_id: "sub-pend-123", status: "pending", available_balance: "0" },
+        ],
+      },
+    }),
     "GET /v2/fee-tiers": () => ({
       body: { feeTiers: [{ Tier: 0, MinVolume: 0, TakerRate: 0.0005, MakerRate: 0 }] },
     }),
@@ -137,6 +145,7 @@ export async function makeApp(
   overrides: Record<string, Handler> = {},
   rateLimit = false,
   draft: DraftFn | null = null,
+  apiEnv: Record<string, string> = {},
 ) {
   const pool = new pg.Pool({ connectionString: process.env.TEST_DATABASE_URL });
   const vault = new KeyVault(new LocalKekProvider("t1", { t1: randomBytes(32) }));
@@ -152,7 +161,7 @@ export async function makeApp(
     vault,
     gateway,
     draft,
-    api: loadApiConfig({ RATE_LIMIT: rateLimit ? "on" : "off" }),
+    api: loadApiConfig({ RATE_LIMIT: rateLimit ? "on" : "off", ...apiEnv }),
   });
   return {
     app,

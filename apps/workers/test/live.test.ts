@@ -210,3 +210,171 @@ describe("Strike testnet call lifecycle (unfunded wallet)", () => {
     await pool.query("DELETE FROM users WHERE id = $1", [userId]);
   }, 90_000);
 });
+
+describe("Strike testnet live runner (unfunded wallet)", () => {
+  it("signs and places a real bracket order, Strike rejects it, and the runner records exactly why", async () => {
+    const { KeyVault, LocalKekProvider, StrikeGateway, instantiateTemplate } = await import(
+      "@pit/shared"
+    );
+    const { generateApiWalletKeys, requestBuilderSignature, verifyBuilderSignature } = await import(
+      "@pit/strike-sdk"
+    );
+    const { LiveRunner } = await import("../src/live/runner.js");
+    const ed = await import("@noble/ed25519");
+    const { base58 } = await import("@scure/base");
+    const { randomBytes } = await import("node:crypto");
+
+    // A throwaway wallet with no funds, connected through the real builder flow.
+    const anon = new StrikeClient({
+      baseUrl: strike.urls.api,
+      priceUrl: strike.urls.price,
+      builderFeeBps: 10,
+    });
+    await anon.syncClock();
+    const priv = ed.utils.randomPrivateKey();
+    const keys = generateApiWalletKeys();
+    const ch = await requestBuilderSignature(anon, {
+      address: base58.encode(ed.getPublicKey(priv)),
+      chain: "solana",
+      publicKey: keys.publicKey,
+      builderCode: "Pit",
+      feeShareBps: 10,
+    });
+    const acct = await verifyBuilderSignature(anon, {
+      nonce: ch.nonce,
+      walletSignature: base58.encode(ed.sign(new TextEncoder().encode(ch.message_to_sign), priv)),
+    });
+
+    const vault = new KeyVault(new LocalKekProvider("t", { t: randomBytes(32) }));
+    const userId = (
+      await pool.query(
+        "INSERT INTO users (chain, address, strike_account_id) VALUES ('solana', $1, $2) RETURNING id",
+        [`live-run-${crypto.randomUUID()}`, acct.account_id],
+      )
+    ).rows[0].id;
+    const walletId = crypto.randomUUID();
+    await pool.query(
+      "INSERT INTO api_wallets (id, user_id, network, public_key, sealed_private_key, kek_id, fee_share_bps) VALUES ($1,$2,'testnet',$3,$4,'t',10)",
+      [
+        walletId,
+        userId,
+        keys.publicKey,
+        JSON.stringify(vault.seal(keys.privateKey, `api_wallet:${walletId}`)),
+      ],
+    );
+
+    // The real account has $0, so report a balance for that one endpoint only. Everything else is real:
+    // prices, market rules, signing, the leverage call, the bracket order, and Strike's order history.
+    const realFetch = fetch;
+    const lyingAboutBalance = (async (url: string | URL, init?: RequestInit) =>
+      String(url).endsWith("/v2/account")
+        ? new Response(JSON.stringify({ available_balance: "10000" }))
+        : realFetch(url, init)) as typeof fetch;
+    const gateway = new StrikeGateway(pool, vault, strike, lyingAboutBalance);
+    const runner = new LiveRunner(pool, gateway, silentLogger, {
+      intervalMs: 1000,
+      network: "testnet",
+      builderBps: 10,
+      limits: { maxLeverage: 10 },
+      slippageBps: 5,
+      maxFailures: 3,
+      maxSignalAgeMs: 600_000,
+    });
+
+    const spec = instantiateTemplate("breakout", { marginUsd: 100, leverage: 3, maxLossUsd: 40 });
+    spec.indicators = [];
+    spec.direction = "long";
+    spec.entry = {
+      long: {
+        match: "all",
+        rules: [
+          {
+            left: { kind: "price", indicator: null, value: null, price: "close" },
+            op: ">",
+            right: { kind: "number", indicator: null, value: 1, price: null },
+          },
+        ],
+      },
+      short: null,
+    };
+    spec.exit = {
+      stopLossPct: 2,
+      takeProfitPct: 6,
+      trailingStopPct: null,
+      maxHoldBars: null,
+      exitLong: null,
+      exitShort: null,
+    };
+
+    const HOUR = 3_600_000;
+    const hourStart = Math.floor(Date.now() / HOUR) * HOUR;
+    const markNow = Number(
+      (
+        (await (await fetch(`${strike.urls.price}/v2/markPrice?symbol=BTC-USD`)).json()) as {
+          p: string;
+        }
+      ).p,
+    );
+    await pool.query(
+      "DELETE FROM candles WHERE symbol = 'BTC-USD' AND interval = '1h' AND price_type = 'mark' AND open_time = $1",
+      [hourStart - HOUR],
+    );
+    await pool.query(
+      `INSERT INTO candles (symbol, interval, price_type, open_time, close_time, open, high, low, close, volume, quote_volume, trades)
+       VALUES ('BTC-USD','1h','mark',$1,$2,$3,$3,$3,$3,1,1,1)`,
+      [hourStart - HOUR, hourStart - 1, markNow],
+    );
+    const runId = (
+      await pool.query(
+        `INSERT INTO live_runs (user_id, name, market, spec, budget, network, account_id, started_ms, state)
+         VALUES ($1,'live e2e','BTC-USD',$2,$3,'testnet',$4,$5,$6) RETURNING id`,
+        [
+          userId,
+          JSON.stringify(spec),
+          JSON.stringify({ maxMarginUsd: 150, maxLossUsd: 40 }),
+          acct.account_id,
+          hourStart - HOUR,
+          JSON.stringify({
+            day: null,
+            tradesToday: 0,
+            barsSinceExit: null,
+            signalSeq: 0,
+            failures: 0,
+            lastHandledSeq: 0,
+          }),
+        ],
+      )
+    ).rows[0].id as string;
+
+    const now = hourStart + 20_000; // the candle just closed
+    await runner.processRun(runId, now);
+    let trade: { status: string; fail_reason: string | null } | undefined;
+    for (let i = 0; i < 12 && trade?.status !== "failed"; i++) {
+      await new Promise((r) => setTimeout(r, 1500));
+      await runner.processRun(runId, now + (i + 1) * 2000);
+      trade = (
+        await pool.query("SELECT status, fail_reason FROM live_trades WHERE run_id = $1", [runId])
+      ).rows[0];
+    }
+    const kinds = (
+      await pool.query("SELECT kind FROM live_events WHERE run_id = $1 ORDER BY id", [runId])
+    ).rows.map((r) => r.kind);
+    console.log("live runner against real Strike:", trade, kinds.join(" > "));
+    expect(trade).toEqual({ status: "failed", fail_reason: "insufficient_balance" });
+    expect(kinds).toEqual(
+      expect.arrayContaining([
+        "evaluated",
+        "signal",
+        "order_planned",
+        "order_sent",
+        "trade_failed",
+      ]),
+    );
+    await pool.query("DELETE FROM live_runs WHERE id = $1", [runId]);
+    await pool.query("DELETE FROM users WHERE id = $1", [userId]);
+    await pool.query(
+      "DELETE FROM candles WHERE symbol = 'BTC-USD' AND interval = '1h' AND price_type = 'mark' AND open_time = $1 AND volume = 1 AND quote_volume = 1",
+      [hourStart - HOUR],
+    );
+  }, 120_000);
+});
