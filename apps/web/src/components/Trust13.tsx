@@ -72,8 +72,9 @@ export function HealthBadge() {
   const h = useHealth();
   if (!h) return null;
   return (
-    <a href="/health" className={`badge ${DOT[h.status]}`} title={h.reasons.join(" ")}>
-      ● {WORD[h.status]}
+    <a href="/health" className={`health ${DOT[h.status]}`} title={h.reasons.join(" ")}>
+      <i />
+      <span>{WORD[h.status]}</span>
     </a>
   );
 }

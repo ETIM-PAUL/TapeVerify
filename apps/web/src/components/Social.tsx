@@ -136,11 +136,13 @@ export function Feed({ signedIn }: { signedIn: boolean }) {
   return (
     <div className="stack">
       <h1>Feed</h1>
-      <div className="row">
+      <div className="seg" role="tablist" aria-label="Feed scope">
         {signedIn && (
           <button
             type="button"
-            className={scope === "following" ? "" : "ghost"}
+            role="tab"
+            aria-selected={scope === "following"}
+            className={scope === "following" ? "on" : ""}
             onClick={() => setScope("following")}
           >
             Following
@@ -148,7 +150,9 @@ export function Feed({ signedIn }: { signedIn: boolean }) {
         )}
         <button
           type="button"
-          className={scope === "all" ? "" : "ghost"}
+          role="tab"
+          aria-selected={scope === "all"}
+          className={scope === "all" ? "on" : ""}
           onClick={() => setScope("all")}
         >
           Everyone
@@ -266,8 +270,27 @@ export function NotificationBell() {
     return () => clearInterval(t);
   }, []);
   return (
-    <a href="/notifications" title="Notifications">
-      Notifications{unread > 0 ? ` (${unread})` : ""}
+    <a
+      href="/notifications"
+      className="iconbtn"
+      title="Notifications"
+      aria-label={unread > 0 ? `Notifications, ${unread} unread` : "Notifications"}
+    >
+      <svg
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        <path d="M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8" />
+        <path d="M10.3 20a1.9 1.9 0 0 0 3.4 0" />
+      </svg>
+      {unread > 0 && <span className="count">{unread > 99 ? "99+" : unread}</span>}
     </a>
   );
 }

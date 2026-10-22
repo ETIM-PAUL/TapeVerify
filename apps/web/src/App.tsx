@@ -62,8 +62,8 @@ export function App() {
   if (!ready && !publicPage) return null;
   return (
     <WalletContext.Provider value={{ wallet, setWallet }}>
+      <NavBar user={user} onLogout={logout} />
       <main>
-        <NavBar signedIn={Boolean(user)} />
         {user && <AlertsBanner />}
         {callCode ? (
           <CallPage code={callCode} />
@@ -92,7 +92,7 @@ export function App() {
         ) : isStudio ? (
           <Studio user={user} onUser={setUser} />
         ) : user ? (
-          <Account user={user} onLogout={logout} onExpired={logout} />
+          <Account user={user} onExpired={logout} />
         ) : (
           <Connect
             onDone={(u, w) => {

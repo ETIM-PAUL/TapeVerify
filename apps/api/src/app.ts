@@ -57,7 +57,8 @@ export async function buildApp(
   await app.register(cors, {
     origin: base.api.secureCookies
       ? base.api.webOrigin
-      : (origin, cb) => cb(null, !origin || origin === base.api.webOrigin || localOrigin.test(origin)),
+      : (origin, cb) =>
+          cb(null, !origin || origin === base.api.webOrigin || localOrigin.test(origin)),
     credentials: true,
   });
   await app.register(cookie);
