@@ -288,3 +288,10 @@ textarea.code {
 details {
   margin: 12px 0;
 }
+.warnlist {
+  color: var(--muted);
+  padding-left: 18px;
+}
+.warnlist li {
+  margin: 4px 0;
+}

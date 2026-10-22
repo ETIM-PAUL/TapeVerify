@@ -9,6 +9,7 @@ import { createLogger, errMsg } from "./log.js";
 import { CandleIndexer } from "./market/candles.js";
 import { DepthPoller } from "./market/depth.js";
 import { PriceRecorder } from "./market/streams.js";
+import { PaperRunner } from "./paper/runner.js";
 import { runRetention } from "./retention.js";
 
 const log = createLogger("indexer");
@@ -38,6 +39,11 @@ const candles = new CandleIndexer(client, pool, cfg, symbols, log.child("candles
 const depth = new DepthPoller(client, pool, cfg, symbols, log.child("depth"));
 const fills = new FillsIngester(client, pool, cfg, log.child("fills"));
 const calls = new CallTracker(client, pool, log.child("calls"));
+const paper = new PaperRunner(client, pool, log.child("paper"), {
+  intervalMs: Number(process.env.PAPER_TICK_SECONDS || 10) * 1000,
+  builderBps: strike.builderFeeBps,
+  extraWarmup: 300,
+});
 
 for (const r of l3) await r.start();
 prices.start();
@@ -45,6 +51,7 @@ candles.start();
 depth.start();
 fills.start();
 calls.start();
+paper.start();
 
 const retention = setInterval(
   () =>
@@ -69,6 +76,7 @@ async function shutdown(signal: string) {
   depth.stop();
   fills.stop();
   calls.stop();
+  paper.stop();
   await prices.stop();
   await Promise.all(l3.map((r) => r.stop()));
   await pool.end();

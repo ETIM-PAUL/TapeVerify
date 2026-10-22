@@ -187,12 +187,21 @@ describe("Strike testnet call lifecycle (unfunded wallet)", () => {
       10,
     );
 
-    const { CallTracker } = await import("../src/calls/tracker.js");
-    const tracker = new CallTracker(client, pool, silentLogger);
+    const { trackCall } = await import("../src/calls/tracker.js");
     let row: { status: string; fail_reason: string | null } | undefined;
     for (let i = 0; i < 10 && row?.status !== "failed"; i++) {
       await new Promise((r) => setTimeout(r, 1500));
-      await tracker.tick();
+      // Track just this call: the shared test database holds other tests' calls that aren't ours to chase.
+      const mine = (
+        await pool.query(
+          `SELECT c.id, c.user_id, c.symbol, c.side, c.status, c.strategy_id, c.primary_client_order_id,
+                  c.tp_client_order_id, c.sl_client_order_id, c.entry_trade_id, c.entry_size, c.entry_ts_ms,
+                  (extract(epoch FROM c.created_at) * 1000)::bigint AS created_ms, u.strike_account_id
+             FROM calls c JOIN users u ON u.id = c.user_id WHERE c.id = $1`,
+          [callId],
+        )
+      ).rows[0];
+      await trackCall(client, pool, mine);
       row = (await pool.query("SELECT status, fail_reason FROM calls WHERE id = $1", [callId]))
         .rows[0];
     }

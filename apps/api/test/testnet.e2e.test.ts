@@ -5,7 +5,7 @@
  */
 import { randomBytes } from "node:crypto";
 import * as ed from "@noble/ed25519";
-import { KeyVault, LocalKekProvider, loadStrikeConfig } from "@pit/shared";
+import { instantiateTemplate, KeyVault, LocalKekProvider, loadStrikeConfig } from "@pit/shared";
 import {
   generateApiWalletKeys,
   requestBuilderSignature,
@@ -231,4 +231,47 @@ describe("Strike testnet through Pit's API", () => {
     },
     120_000,
   );
+
+  it("backtests the templates on real indexed testnet candles with Strike's real market rules and fees", async () => {
+    const priv = ed.utils.randomPrivateKey();
+    const address = base58.encode(ed.getPublicKey(priv));
+    const cookie = await connect("solana", address, async (m) =>
+      base58.encode(ed.sign(new TextEncoder().encode(m), priv)),
+    );
+    const have = await pool.query(
+      "SELECT count(*) AS n FROM candles WHERE symbol = 'BTC-USD' AND interval = '1h' AND price_type = 'mark' AND volume <> 1",
+    );
+    if (Number(have.rows[0].n) < 500) {
+      console.log(
+        "skipped: run the indexer or `pnpm --filter @pit/workers test:live` first to load real candles",
+      );
+      return;
+    }
+    for (const tpl of ["dip_buyer", "trend_follower", "breakout"] as const) {
+      const spec = instantiateTemplate(tpl, { marginUsd: 200, leverage: 3, maxLossUsd: 500 });
+      spec.timeframe = "1h"; // the test database only holds 1h candles
+      const saved = await app.inject({
+        method: "POST",
+        url: "/v1/strategies",
+        headers: { cookie },
+        payload: { spec, source: "template" },
+      });
+      expect(saved.statusCode, saved.body).toBe(201);
+      const r = await app.inject({
+        method: "POST",
+        url: `/v1/strategies/${saved.json().id}/backtest`,
+        headers: { cookie },
+        payload: { days: 180 },
+      });
+      expect(r.statusCode, r.body).toBe(201);
+      const { result, params } = r.json();
+      expect(params.takerRate).toBe(0.0005); // Strike's real tier-0 taker rate
+      expect(Number.isFinite(result.endEquity)).toBe(true);
+      expect(result.coverage.bars).toBeGreaterThan(100 * 24);
+      const s = result.stats;
+      console.log(
+        `${tpl.padEnd(15)} ${result.coverage.bars} candles  trades ${s.trades}  return ${s.returnPct.toFixed(2)}%  maxDD ${s.maxDrawdownPct.toFixed(1)}%  win ${s.winRate === null ? "-" : Math.round(s.winRate * 100)}%  fees $${s.totalFees.toFixed(2)}  liq ${s.liquidations}  hold-only ${s.buyAndHoldPct?.toFixed(1)}%`,
+      );
+    }
+  }, 120_000);
 });

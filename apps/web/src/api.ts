@@ -252,3 +252,108 @@ export interface ValidateOut {
   warnings: Issue[];
   description: Description | null;
 }
+
+export interface SimTradeOut {
+  id: number;
+  side: "long" | "short";
+  entryTs: number;
+  exitTs: number;
+  entryPrice: number;
+  exitPrice: number;
+  size: number;
+  notional: number;
+  margin: number;
+  leverage: number;
+  grossPnl: number;
+  fees: number;
+  netPnl: number;
+  returnPct: number;
+  barsHeld: number;
+  reason: string;
+  liquidated: boolean;
+}
+export interface BacktestStatsOut {
+  trades: number;
+  wins: number;
+  losses: number;
+  winRate: number | null;
+  netPnl: number;
+  returnPct: number;
+  maxDrawdownPct: number;
+  profitFactor: number | null;
+  expectancy: number | null;
+  avgHoldBars: number | null;
+  totalFees: number;
+  liquidations: number;
+  longestLosingStreak: number;
+  exposurePct: number;
+  consistency: number | null;
+  buyAndHoldPct: number | null;
+}
+export interface BacktestOut {
+  id: string;
+  params: {
+    days: number;
+    slippageBps: number;
+    startEquity: number;
+    takerRate: number;
+    builderBps: number;
+  };
+  result: {
+    stats: BacktestStatsOut;
+    startEquity: number;
+    endEquity: number;
+    equityCurve: Array<{ t: number; equity: number }>;
+    trades: SimTradeOut[];
+    halted: string | null;
+    skipped: Record<string, number>;
+    coverage: {
+      bars: number;
+      from: number | null;
+      to: number | null;
+      missingBars: number;
+      warmupBars: number;
+    };
+    warnings: string[];
+  };
+}
+export interface PaperSummary {
+  id: string;
+  strategyId: string | null;
+  name: string;
+  status: "running" | "stopping" | "stopped" | "halted";
+  market: string;
+  timeframe: string;
+  startEquity: number;
+  equity: number;
+  realizedPnl: number;
+  inPosition: boolean;
+  startedAt: number;
+}
+export interface PaperDetail {
+  id: string;
+  name: string;
+  status: PaperSummary["status"];
+  stopReason: string | null;
+  startEquity: number;
+  startedAt: number;
+  lastPrice: number | null;
+  lastTickAt: number | null;
+  equity: number;
+  markedEquity: number;
+  realizedPnl: number;
+  halted: string | null;
+  position: {
+    side: string;
+    entryPrice: number;
+    size: number;
+    leverage: number;
+    stop: number;
+    tp: number | null;
+    liq: number;
+    unrealizedPnl: number | null;
+  } | null;
+  trades: SimTradeOut[];
+  equityCurve: Array<{ t: number; equity: number }>;
+  notes: string[];
+}

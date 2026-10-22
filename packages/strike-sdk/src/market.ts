@@ -182,3 +182,14 @@ export interface MarketRules {
 
 export const getMarketRules = async (c: StrikeClient): Promise<Record<string, MarketRules>> =>
   (await c.publicGet<{ markets: Record<string, MarketRules> }>("/v2/markets")).markets;
+
+export interface FeeTier {
+  Tier: number;
+  MinVolume: number;
+  TakerRate: number;
+  MakerRate: number;
+}
+
+/** Public fee schedule (`/v2/fee-tiers`). Tier 0 is what a new account pays. */
+export const getFeeTiers = (c: StrikeClient) =>
+  c.publicGet<{ feeTiers: FeeTier[] }>("/v2/fee-tiers");

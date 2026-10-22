@@ -71,6 +71,9 @@ export function fakeStrike(overrides: Record<string, Handler> = {}) {
       },
     }),
     "GET /v2/markets": () => ({ body: marketsBody("80000") }),
+    "GET /v2/fee-tiers": () => ({
+      body: { feeTiers: [{ Tier: 0, MinVolume: 0, TakerRate: 0.0005, MakerRate: 0 }] },
+    }),
     "POST /v2/leverage": (c) => ({ body: { leverage: c.body?.leverage, symbol: c.body?.symbol } }),
     "POST /v2/order/strategy": (c) => ({
       status: 201,

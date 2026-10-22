@@ -12,7 +12,9 @@ import {
   type ValidateOut,
 } from "../api";
 import { useWallet } from "../wallet-context";
+import { BacktestPanel } from "./BacktestPanel";
 import { Connect } from "./Connect";
+import { PaperPanel } from "./PaperPanel";
 
 const TIMEFRAMES = ["5m", "15m", "1h", "4h", "1d"];
 
@@ -412,6 +414,15 @@ export function Studio({ user, onUser }: { user: User | null; onUser: (u: User) 
           </div>
         </>
       )}
+
+      {savedId ? (
+        <BacktestPanel strategyId={savedId} />
+      ) : (
+        spec && (
+          <p className="muted small">Save the draft to backtest it and run it in paper mode.</p>
+        )
+      )}
+      <PaperPanel strategyId={savedId} />
 
       <div className="card">
         <h2>My strategies</h2>

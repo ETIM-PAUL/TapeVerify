@@ -11,6 +11,7 @@ import type { ApiConfig } from "./config.js";
 import { ReconnectRequiredError, type StrikeGateway } from "./gateway.js";
 import { accountRoutes } from "./routes/account.js";
 import { authRoutes } from "./routes/auth.js";
+import { backtestsRoutes } from "./routes/backtests.js";
 import { callsRoutes } from "./routes/calls.js";
 import { followsRoutes } from "./routes/follows.js";
 import { fundsRoutes } from "./routes/funds.js";
@@ -93,5 +94,6 @@ export async function buildApp(
   shareRoutes(app, d);
   tradersRoutes(app, d);
   strategiesRoutes(app, d);
+  backtestsRoutes(app, d);
   return app;
 }
