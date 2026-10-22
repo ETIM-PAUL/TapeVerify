@@ -62,8 +62,14 @@ export function ogSvg(d: OgData): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" font-family="Inter">
   <rect width="1200" height="630" fill="#0b0d10"/>
   <rect x="24" y="24" width="1152" height="582" rx="28" fill="#14181d" stroke="#232a32" stroke-width="2"/>
-  <text x="72" y="96" font-size="34" font-weight="700" fill="#f5a524">PIT</text>
-  <text x="140" y="96" font-size="22" fill="#8b96a3">protected by Argus</text>
+  <g transform="translate(72 58) scale(1.5)">
+    <rect width="32" height="32" rx="8" fill="#f5a524"/>
+    <rect x="6.5" y="7" width="13" height="2.6" rx="1.3" fill="#1a1100" opacity="0.5"/>
+    <rect x="6.5" y="12" width="8" height="2.6" rx="1.3" fill="#1a1100" opacity="0.5"/>
+    <path d="M8 21.5 13.2 26 25.5 11.5" fill="none" stroke="#1a1100" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="134" y="98" font-size="34" font-weight="700" fill="#e8ecf1">Tape<tspan font-weight="500" fill="#8b96a3">Verify</tspan></text>
+  <text x="344" y="97" font-size="22" fill="#8b96a3">verified from Strike fills</text>
   <rect x="${1128 - 360}" y="62" width="360" height="48" rx="24" fill="#1b2128"/>
   <text x="${1128 - 180}" y="95" font-size="22" font-weight="700" fill="#e8ecf1" text-anchor="middle">${xmlEscape(STATUS_LABEL[d.status])}</text>
   <text x="72" y="236" font-size="96" font-weight="700" fill="#e8ecf1">${xmlEscape(d.symbol)}</text>

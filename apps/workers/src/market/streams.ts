@@ -1,4 +1,4 @@
-import { PriceStream } from "@pit/strike-sdk";
+import { PriceStream } from "@tapeverify/strike-sdk";
 import type pg from "pg";
 import type { WorkerConfig } from "../config.js";
 import { errMsg, type Logger } from "../log.js";

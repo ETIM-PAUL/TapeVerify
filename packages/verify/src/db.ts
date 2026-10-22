@@ -1,4 +1,4 @@
-import { computeStats, loadTradersData } from "@pit/shared";
+import { computeStats, loadTradersData } from "@tapeverify/shared";
 import type pg from "pg";
 import { type CallFacts, detectFrontRunning } from "./frontrun.js";
 import { cleanRecord, type FindingRecord, type FindingStatus, reputation } from "./reputation.js";
@@ -172,11 +172,11 @@ export async function upsertFinding(
   d: FindingDraft,
 ): Promise<{ id: string; inserted: boolean }> {
   const { rows } = await pool.query(
-    `INSERT INTO argus_findings (subject_id, kind, severity, base_key, generation, summary, evidence)
+    `INSERT INTO verify_findings (subject_id, kind, severity, base_key, generation, summary, evidence)
      VALUES ($1,$2,$3,$4,$5,$6,$7)
      ON CONFLICT (base_key, generation) DO UPDATE SET
        evidence = EXCLUDED.evidence, summary = EXCLUDED.summary, updated_at = now(),
-       severity = CASE WHEN argus_findings.status = 'open' THEN EXCLUDED.severity ELSE argus_findings.severity END
+       severity = CASE WHEN verify_findings.status = 'open' THEN EXCLUDED.severity ELSE verify_findings.severity END
      RETURNING id, (xmax = 0) AS inserted`,
     [
       d.subjectId,
@@ -191,7 +191,7 @@ export async function upsertFinding(
   const r = rows[0];
   if (r.inserted)
     await pool.query(
-      "INSERT INTO argus_events (finding_id, actor, from_status, to_status, note) VALUES ($1, 'argus', NULL, 'open', $2)",
+      "INSERT INTO verify_events (finding_id, actor, from_status, to_status, note) VALUES ($1, 'verify', NULL, 'open', $2)",
       [r.id, d.summary],
     );
   return { id: r.id as string, inserted: r.inserted as boolean };
@@ -242,7 +242,7 @@ export async function findingsFor(
   const out = new Map<string, FindingRecord[]>();
   if (userIds.length === 0) return out;
   const { rows } = await pool.query(
-    "SELECT id, subject_id, kind, severity, status, summary, base_key, generation, detected_at FROM argus_findings WHERE subject_id = ANY($1)",
+    "SELECT id, subject_id, kind, severity, status, summary, base_key, generation, detected_at FROM verify_findings WHERE subject_id = ANY($1)",
     [userIds],
   );
   for (const r of rows) out.set(r.subject_id, [...(out.get(r.subject_id) ?? []), toRecord(r)]);
@@ -262,7 +262,7 @@ export async function recomputeReputation(
     userIds ??
     (
       await pool.query(
-        `SELECT id FROM users WHERE id IN (SELECT subject_id FROM argus_findings)
+        `SELECT id FROM users WHERE id IN (SELECT subject_id FROM verify_findings)
             OR strike_account_id IN (SELECT DISTINCT account_id FROM trades)`,
       )
     ).rows.map((r) => r.id as string);
@@ -357,7 +357,7 @@ export async function transitionFinding(
   try {
     await client.query("BEGIN");
     const cur = await client.query(
-      "SELECT status, subject_id FROM argus_findings WHERE id = $1 FOR UPDATE",
+      "SELECT status, subject_id FROM verify_findings WHERE id = $1 FOR UPDATE",
       [id],
     );
     const row = cur.rows[0];
@@ -366,13 +366,13 @@ export async function transitionFinding(
       return { ok: false };
     }
     await client.query(
-      `UPDATE argus_findings SET status = $2, updated_at = now(), review_note = COALESCE($3, review_note),
+      `UPDATE verify_findings SET status = $2, updated_at = now(), review_note = COALESCE($3, review_note),
               resolved_at = CASE WHEN $2 IN ('confirmed', 'dismissed', 'cleared') THEN now() ELSE NULL END
         WHERE id = $1`,
       [id, to, note ?? null],
     );
     await client.query(
-      "INSERT INTO argus_events (finding_id, actor, from_status, to_status, note) VALUES ($1,$2,$3,$4,$5)",
+      "INSERT INTO verify_events (finding_id, actor, from_status, to_status, note) VALUES ($1,$2,$3,$4,$5)",
       [id, actor, row.status, to, note ?? null],
     );
     await client.query("COMMIT");

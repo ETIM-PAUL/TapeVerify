@@ -1,6 +1,6 @@
 import { type FindingDraft, generationOf, type Severity } from "./types.js";
 
-/** One Strike fill of an account Pit knows. `tradeId` is shared by both sides of the same match. */
+/** One Strike fill of an account TapeVerify knows. `tradeId` is shared by both sides of the same match. */
 export interface FillFacts {
   userId: string;
   accountId: string;

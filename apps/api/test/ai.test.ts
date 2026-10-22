@@ -1,4 +1,4 @@
-import { instantiateTemplate, type MarketLimits } from "@pit/shared";
+import { instantiateTemplate, type MarketLimits } from "@tapeverify/shared";
 import { describe, expect, it } from "vitest";
 import {
   type AiConfig,

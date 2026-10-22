@@ -1,4 +1,4 @@
-import { createPool, KeyVault, LocalKekProvider, loadStrikeConfig } from "@pit/shared";
+import { createPool, KeyVault, LocalKekProvider, loadStrikeConfig } from "@tapeverify/shared";
 import { createDrafter, loadAiConfig } from "./ai/translate.js";
 import { buildApp } from "./app.js";
 import { loadApiConfig } from "./config.js";

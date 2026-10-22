@@ -1,9 +1,9 @@
-import { creatorShare, notionalOf, tradeBuilderFee } from "@pit/shared";
+import { creatorShare, notionalOf, tradeBuilderFee } from "@tapeverify/shared";
 import type pg from "pg";
 import { errMsg, type Logger } from "../log.js";
 
 /**
- * Creator revenue share (Option B: Pit is the builder, creators get a share of Pit's builder fee).
+ * Creator revenue share (Option B: TapeVerify is the builder, creators get a share of TapeVerify's builder fee).
  *
  * Each closed live trade of a run that was cloned from a listing, and still trades that listing's signals,
  * accrues exactly one row: the creator's share of the builder fee Strike charged on that trade's entry and

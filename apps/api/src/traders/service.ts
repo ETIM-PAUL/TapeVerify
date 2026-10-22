@@ -9,7 +9,7 @@ import {
   type Timeframe,
   type TraderStatsResult,
   unrankedReason,
-} from "@pit/shared";
+} from "@tapeverify/shared";
 import type pg from "pg";
 
 export const TIMEFRAMES = ["24h", "7d", "30d", "all"] as const;

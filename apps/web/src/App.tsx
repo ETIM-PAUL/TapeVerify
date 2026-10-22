@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, type User } from "./api";
 import { Account } from "./components/Account";
-import { ArgusAdmin } from "./components/ArgusAdmin";
 import { CallPage } from "./components/CallPage";
 import { Connect } from "./components/Connect";
 import { Earnings } from "./components/Earnings";
@@ -14,6 +13,7 @@ import { Connections, Feed, Notifications } from "./components/Social";
 import { Studio } from "./components/Studio";
 import { Trust } from "./components/Trust";
 import { AlertsBanner, StrikeHealth } from "./components/Trust13";
+import { VerifyAdmin } from "./components/VerifyAdmin";
 import { type ActiveWallet, WalletContext } from "./wallet-context";
 
 export function App() {
@@ -46,7 +46,7 @@ export function App() {
   const isTrust = path === "/trust";
   const isHealth = path === "/health";
   const isFeed = path === "/feed";
-  const isArgusAdmin = path === "/admin/argus";
+  const isVerifyAdmin = path === "/admin/verify";
   const publicPage = Boolean(
     callCode ||
       traderRef ||
@@ -55,7 +55,7 @@ export function App() {
       listingId ||
       isMarket ||
       isEarnings ||
-      isArgusAdmin ||
+      isVerifyAdmin ||
       isHealth ||
       isFeed,
   );
@@ -85,8 +85,8 @@ export function App() {
           <Connections />
         ) : isHealth ? (
           <StrikeHealth />
-        ) : isArgusAdmin ? (
-          <ArgusAdmin />
+        ) : isVerifyAdmin ? (
+          <VerifyAdmin />
         ) : isTrust && user ? (
           <Trust />
         ) : isStudio ? (

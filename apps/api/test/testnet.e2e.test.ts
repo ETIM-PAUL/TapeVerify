@@ -1,17 +1,22 @@
 /**
- * Live Strike testnet: connect throwaway Solana and Ethereum wallets through Pit's own API
+ * Live Strike testnet: connect throwaway Solana and Ethereum wallets through TapeVerify's own API
  * (challenge -> wallet signature -> verify), then read the account and request a deposit quote
  * and unsigned tx. Cardano needs a real CIP-30 wallet (COSE signing) and is covered manually.
  */
 import { randomBytes } from "node:crypto";
 import * as ed from "@noble/ed25519";
-import { instantiateTemplate, KeyVault, LocalKekProvider, loadStrikeConfig } from "@pit/shared";
+import { base58 } from "@scure/base";
+import {
+  instantiateTemplate,
+  KeyVault,
+  LocalKekProvider,
+  loadStrikeConfig,
+} from "@tapeverify/shared";
 import {
   generateApiWalletKeys,
   requestBuilderSignature,
   verifyBuilderSignature,
-} from "@pit/strike-sdk";
-import { base58 } from "@scure/base";
+} from "@tapeverify/strike-sdk";
 import pg from "pg";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -29,7 +34,7 @@ beforeAll(async () => {
   const vault = new KeyVault(new LocalKekProvider("t1", { t1: randomBytes(32) }));
   const cfg = loadStrikeConfig({
     STRIKE_NETWORK: "testnet",
-    BUILDER_CODE: "Pit",
+    BUILDER_CODE: "TapeVerify",
     BUILDER_FEE_BPS: "10",
   });
   gateway = new StrikeGateway(pool, vault, cfg);
@@ -66,10 +71,10 @@ async function connect(
     payload: { nonce, signature: await sign(message) },
   });
   expect(v.statusCode, v.body).toBe(200);
-  return `pit_session=${v.cookies.find((c) => c.name === "pit_session")?.value}`;
+  return `tape_session=${v.cookies.find((c) => c.name === "tape_session")?.value}`;
 }
 
-describe("Strike testnet through Pit's API", () => {
+describe("Strike testnet through TapeVerify's API", () => {
   it("Solana: connect, account, deposit quote + unsigned tx", async () => {
     const priv = ed.utils.randomPrivateKey();
     const address = base58.encode(ed.getPublicKey(priv));
@@ -129,7 +134,7 @@ describe("Strike testnet through Pit's API", () => {
     expect(b.json().unsigned_tx.from.toLowerCase()).toBe(account.address.toLowerCase());
   }, 90_000);
 
-  it("Ethereum: Pit's lowercased address maps to the same Strike account as the checksummed one", async () => {
+  it("Ethereum: TapeVerify's lowercased address maps to the same Strike account as the checksummed one", async () => {
     const account = privateKeyToAccount(generatePrivateKey());
     const cookie = await connect("ethereum", account.address, (m) =>
       account.signMessage({ message: m }),
@@ -145,7 +150,7 @@ describe("Strike testnet through Pit's API", () => {
       address: account.address,
       chain: "ethereum",
       publicKey: keys.publicKey,
-      builderCode: "Pit",
+      builderCode: "TapeVerify",
       feeShareBps: 10,
     });
     const res = await verifyBuilderSignature(anon, {
@@ -243,7 +248,7 @@ describe("Strike testnet through Pit's API", () => {
     );
     if (Number(have.rows[0].n) < 500) {
       console.log(
-        "skipped: run the indexer or `pnpm --filter @pit/workers test:live` first to load real candles",
+        "skipped: run the indexer or `pnpm --filter @tapeverify/workers test:live` first to load real candles",
       );
       return;
     }

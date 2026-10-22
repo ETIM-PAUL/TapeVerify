@@ -1,4 +1,4 @@
-import { computeStats, loadTradersData } from "@pit/shared";
+import { computeStats, loadTradersData } from "@tapeverify/shared";
 import type pg from "pg";
 import { type AnchorConfig, fetchMemos, writeAnchor } from "./anchor.js";
 import {
@@ -249,7 +249,7 @@ export async function recordBundle(
   };
 }
 
-/** Asks the chain (not Pit) whether the anchor transaction exists and carries this batch's memo. */
+/** Asks the chain (not TapeVerify) whether the anchor transaction exists and carries this batch's memo. */
 export async function checkAnchorOnChain(
   bundle: RecordBundle,
   rpcUrl: string,

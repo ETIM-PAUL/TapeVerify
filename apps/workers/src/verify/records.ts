@@ -5,7 +5,7 @@ import {
   sealBatch,
   signingKeyFromSeed,
   takeSnapshots,
-} from "@pit/argus";
+} from "@tapeverify/verify";
 import type pg from "pg";
 import type { Logger } from "../log.js";
 

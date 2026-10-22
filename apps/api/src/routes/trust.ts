@@ -1,4 +1,4 @@
-import { verifyRecord } from "@pit/argus";
+import { verifyRecord } from "@tapeverify/verify";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { AppDeps } from "../app.js";
@@ -64,7 +64,7 @@ export function trustRoutes(app: FastifyInstance, d: AppDeps) {
       anchor: anchored
         ? { chain: anchored.chain, cluster: anchored.cluster, payer: anchored.payer }
         : null,
-      how: "A record's hash is sha256('pit-record:' + canonical JSON of its payload). Its signature signs that hash. Records are grouped into batches with a Merkle tree; the batch hash is written to the anchor chain as a memo 'pit1:<batchId>:<batchHash>'.",
+      how: "A record's hash is sha256('tape-record:' + canonical JSON of its payload). Its signature signs that hash. Records are grouped into batches with a Merkle tree; the batch hash is written to the anchor chain as a memo 'tape1:<batchId>:<batchHash>'.",
     };
   });
 
@@ -96,7 +96,7 @@ export function trustRoutes(app: FastifyInstance, d: AppDeps) {
   });
 
   // Everything needed to check one record, plus the checks run here. The bundle is self-contained:
-  // anyone can re-run the checks with only Pit's public key and a Solana RPC.
+  // anyone can re-run the checks with only TapeVerify's public key and a Solana RPC.
   app.get("/v1/records/:id", { config: limit }, async (req, reply) => {
     const { id } = z.object({ id: z.coerce.number().int().positive() }).parse(req.params);
     if (!d.api.recordPublicKey)

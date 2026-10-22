@@ -1,5 +1,5 @@
 {
-  "name": "@pit/strike-sdk",
+  "name": "@tapeverify/strike-sdk",
   "version": "0.0.0",
   "private": true,
   "type": "module",

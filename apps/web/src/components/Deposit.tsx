@@ -151,7 +151,7 @@ export function Deposit({
       )}
       {msg && <p className={msg.kind}>{msg.text}</p>}
       <p className="muted small">
-        Minimum $5. Funds go to Strike's vault address; Pit can't redirect them.
+        Minimum $5. Funds go to Strike's vault address; TapeVerify can't redirect them.
       </p>
     </div>
   );

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { api, type MyArgus } from "../api";
+import { api, type MyVerify } from "../api";
 import { KIND_LABEL, ReputationCard } from "./Reputation";
 
 function Appeal({ id, onDone }: { id: string; onDone: () => void }) {
@@ -28,7 +28,7 @@ function Appeal({ id, onDone }: { id: string; onDone: () => void }) {
             setBusy(true);
             setErr(null);
             try {
-              await api.post(`/v1/argus/findings/${id}/appeal`, { message: msg.trim() });
+              await api.post(`/v1/verify/findings/${id}/appeal`, { message: msg.trim() });
               onDone();
             } catch (e) {
               setErr((e as Error).message);
@@ -49,11 +49,11 @@ function Appeal({ id, onDone }: { id: string; onDone: () => void }) {
 }
 
 export function Trust() {
-  const [d, setD] = useState<MyArgus | null>(null);
+  const [d, setD] = useState<MyVerify | null>(null);
   const [error, setError] = useState<string | null>(null);
   const load = useCallback(() => {
     api
-      .get<MyArgus>("/v1/me/argus")
+      .get<MyVerify>("/v1/me/verify")
       .then(setD)
       .catch((e) => setError((e as Error).message));
   }, []);
@@ -63,7 +63,7 @@ export function Trust() {
   return (
     <div className="stack">
       <h1>Your trust record</h1>
-      <ReputationCard argus={d.reputation} />
+      <ReputationCard verify={d.reputation} />
       <div className="card">
         <h2>Flags</h2>
         {d.findings.length === 0 ? (

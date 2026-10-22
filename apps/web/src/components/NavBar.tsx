@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { User } from "../api";
 import { shortAddr } from "../format";
+import { LogoMark, Wordmark } from "./Logo";
 import { NotificationBell } from "./Social";
 import { Ticker } from "./Ticker";
 import { HealthBadge } from "./Trust13";
@@ -86,8 +87,8 @@ export function NavBar({ user, onLogout }: { user: User | null; onLogout: () => 
     <header className="topbar">
       <div className="topbar-in">
         <a className="brand" href="/">
-          <span className="brand-mark">P</span>
-          Pit
+          <LogoMark />
+          <Wordmark />
         </a>
         <nav className="navlinks" aria-label="Main">
           {LINKS.map(([href, label]) => (

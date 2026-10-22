@@ -1,1 +1,1 @@
-export { ReconnectRequiredError, StrikeGateway } from "@pit/shared";
+export { ReconnectRequiredError, StrikeGateway } from "@tapeverify/shared";

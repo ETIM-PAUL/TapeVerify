@@ -1,5 +1,5 @@
-import { CLEAR_BELOW, levelFor, usedFraction } from "@pit/argus";
-import { getAccountPositions, getMarkPrice, type StrikeClient } from "@pit/strike-sdk";
+import { getAccountPositions, getMarkPrice, type StrikeClient } from "@tapeverify/strike-sdk";
+import { CLEAR_BELOW, levelFor, usedFraction } from "@tapeverify/verify";
 import type pg from "pg";
 import { errMsg, type Logger } from "../log.js";
 

@@ -4,7 +4,7 @@ import {
   type MarketLimits,
   TEMPLATES,
   validateStrategy,
-} from "@pit/shared";
+} from "@tapeverify/shared";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import {

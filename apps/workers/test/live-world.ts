@@ -7,8 +7,8 @@ import {
   loadStrikeConfig,
   type StrategySpec,
   StrikeGateway,
-} from "@pit/shared";
-import { generateApiWalletKeys } from "@pit/strike-sdk";
+} from "@tapeverify/shared";
+import { generateApiWalletKeys } from "@tapeverify/strike-sdk";
 import type pg from "pg";
 import { type LiveOptions, LiveRunner } from "../src/live/runner.js";
 import { silentLogger } from "../src/log.js";

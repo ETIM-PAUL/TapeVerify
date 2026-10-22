@@ -4,7 +4,7 @@ import {
   type KlineInterval,
   type PriceType,
   type StrikeClient,
-} from "@pit/strike-sdk";
+} from "@tapeverify/strike-sdk";
 import type pg from "pg";
 import type { WorkerConfig } from "../config.js";
 import { errMsg, type Logger } from "../log.js";

@@ -1,4 +1,4 @@
-import { StrikeApiError } from "@pit/strike-sdk";
+import { StrikeApiError } from "@tapeverify/strike-sdk";
 
 export const defaultSleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 

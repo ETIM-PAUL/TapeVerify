@@ -1,8 +1,8 @@
 import { createHash } from "node:crypto";
-import { activeFindings, type FindingRecord, findingsFor } from "@pit/argus";
+import { activeFindings, type FindingRecord, findingsFor } from "@tapeverify/verify";
 import type pg from "pg";
 
-export interface ArgusPublic {
+export interface VerifyPublic {
   score: number;
   performance: number;
   confidence: number;
@@ -24,11 +24,11 @@ export interface ArgusPublic {
 const RANK = { low: 1, medium: 2, high: 3, critical: 4 } as const;
 
 /** What anyone may see about a trader's trust record. Never includes evidence or other accounts. */
-export async function argusFor(
+export async function verifyFor(
   pool: pg.Pool,
   userIds: string[],
-): Promise<Map<string, ArgusPublic>> {
-  const out = new Map<string, ArgusPublic>();
+): Promise<Map<string, VerifyPublic>> {
+  const out = new Map<string, VerifyPublic>();
   if (userIds.length === 0) return out;
   const { rows } = await pool.query(
     "SELECT user_id, score, performance, confidence, clean, clean_reasons, penalties FROM trader_reputation WHERE user_id = ANY($1)",
@@ -42,7 +42,7 @@ export async function argusFor(
       summary: String(p.summary),
       points: Number(p.points),
     }));
-    let worst: ArgusPublic["worst"] = null;
+    let worst: VerifyPublic["worst"] = null;
     for (const p of penalties) {
       const s = p.severity as keyof typeof RANK;
       if (!worst || RANK[s] > RANK[worst]) worst = s;

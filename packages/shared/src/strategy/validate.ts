@@ -26,7 +26,7 @@ export interface ValidationResult {
 }
 
 export interface ValidateOptions {
-  /** Markets Pit supports, with their trading limits. */
+  /** Markets TapeVerify supports, with their trading limits. */
   markets: Record<string, MarketLimits>;
 }
 

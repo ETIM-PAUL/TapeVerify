@@ -1,8 +1,8 @@
 /**
  * Show which stretches of the last N hours have gap-free L3 recordings.
- *   pnpm --filter @pit/workers coverage -- --symbol BTC-USD --hours 24
+ *   pnpm --filter @tapeverify/workers coverage -- --symbol BTC-USD --hours 24
  */
-import { createPool } from "@pit/shared";
+import { createPool } from "@tapeverify/shared";
 import { l3Coverage } from "../l3/rebuild.js";
 
 function arg(name: string, fallback: string): string {

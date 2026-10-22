@@ -1,5 +1,5 @@
-import { L3Book, type L3BookSnapshot } from "@pit/shared";
-import type { L3Snapshot, L3Update } from "@pit/strike-sdk";
+import { L3Book, type L3BookSnapshot } from "@tapeverify/shared";
+import type { L3Snapshot, L3Update } from "@tapeverify/strike-sdk";
 import pg from "pg";
 
 export const testPool = () => new pg.Pool({ connectionString: process.env.TEST_DATABASE_URL });

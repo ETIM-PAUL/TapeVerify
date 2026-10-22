@@ -35,7 +35,7 @@ export class TelegramError extends Error {
   }
 }
 
-/** The few Bot API calls Pit needs, over plain fetch. */
+/** The few Bot API calls TapeVerify needs, over plain fetch. */
 export class TelegramApi {
   constructor(
     private readonly token: string,

@@ -1,7 +1,12 @@
-import { findingsFor, recomputeReputation, runDetection, transitionFinding } from "@pit/argus";
+import {
+  findingsFor,
+  recomputeReputation,
+  runDetection,
+  transitionFinding,
+} from "@tapeverify/verify";
 import type pg from "pg";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
-import { runArgus } from "../src/argus/job.js";
+import { runVerify } from "../src/verify/job.js";
 import { testPool } from "./helpers.js";
 
 const DAY = 86_400_000;
@@ -15,7 +20,7 @@ beforeAll(() => {
 // Other suites sync every user that has a Strike account, so don't leave ours lying around between tests.
 async function cleanup() {
   await pool.query("DELETE FROM users WHERE id = ANY($1)", [users.splice(0)]);
-  await pool.query("DELETE FROM trades WHERE account_id LIKE 'argus-%'");
+  await pool.query("DELETE FROM trades WHERE account_id LIKE 'verify-%'");
 }
 afterEach(cleanup);
 afterAll(async () => {
@@ -24,10 +29,10 @@ afterAll(async () => {
 });
 
 async function user(tag: string) {
-  const account = `argus-${tag}-${crypto.randomUUID()}`;
+  const account = `verify-${tag}-${crypto.randomUUID()}`;
   const r = await pool.query(
     "INSERT INTO users (chain, address, strike_account_id) VALUES ('solana', $1, $2) RETURNING id",
-    [`argus-${crypto.randomUUID()}`, account],
+    [`verify-${crypto.randomUUID()}`, account],
   );
   users.push(r.rows[0].id);
   return { id: r.rows[0].id as string, account };
@@ -70,7 +75,7 @@ const scoreOf = async (id: string) =>
       ?.score,
   );
 
-describe("Argus end to end (staged front-running)", () => {
+describe("Trust checks end to end (staged front-running)", () => {
   it("detects a caller who keeps selling right after followers enter, and the score drops", async () => {
     const now = Date.now();
     const caller = await user("caller");
@@ -94,7 +99,7 @@ describe("Argus end to end (staged front-running)", () => {
         30_000,
       );
 
-    const run = await runArgus(pool, undefined, now);
+    const run = await runVerify(pool, undefined, now);
     expect(run.drafts).toBeGreaterThan(0);
 
     const found = (await findingsFor(pool, [caller.id])).get(caller.id) ?? [];
@@ -123,14 +128,14 @@ describe("Argus end to end (staged front-running)", () => {
 
     // Running again changes nothing: the same behaviour is the same finding.
     const n = (
-      await pool.query("SELECT count(*) AS n FROM argus_findings WHERE subject_id = $1", [
+      await pool.query("SELECT count(*) AS n FROM verify_findings WHERE subject_id = $1", [
         caller.id,
       ])
     ).rows[0].n;
     await runDetection(pool, now);
     expect(
       (
-        await pool.query("SELECT count(*) AS n FROM argus_findings WHERE subject_id = $1", [
+        await pool.query("SELECT count(*) AS n FROM verify_findings WHERE subject_id = $1", [
           caller.id,
         ])
       ).rows[0].n,
@@ -168,7 +173,7 @@ describe("Argus end to end (staged front-running)", () => {
 
     expect(await scoreOf(caller.id)).toBeGreaterThan(hit);
     const events = await pool.query(
-      "SELECT actor, to_status FROM argus_events WHERE finding_id = $1 ORDER BY id",
+      "SELECT actor, to_status FROM verify_events WHERE finding_id = $1 ORDER BY id",
       [open[0]!.id],
     );
     expect(events.rows.map((e) => e.to_status)).toEqual(["open", "dismissed"]);

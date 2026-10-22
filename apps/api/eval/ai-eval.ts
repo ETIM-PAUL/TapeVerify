@@ -1,11 +1,11 @@
 /**
  * Measures how reliably plain English becomes a valid strategy spec with the real model.
- *   pnpm --filter @pit/api eval:ai [-- --model gpt-4.1-mini] [-- --runs 1]
+ *   pnpm --filter @tapeverify/api eval:ai [-- --model gpt-4.1-mini] [-- --runs 1]
  * Needs OPENAI_API_KEY. Costs a few cents per run. Prints a table and exits non-zero if the valid rate
  * (counting correct refusals as valid) is below 95%.
  */
-import { loadStrikeConfig, type MarketLimits, type StrategySpec } from "@pit/shared";
-import { getMarketRules, StrikeClient } from "@pit/strike-sdk";
+import { loadStrikeConfig, type MarketLimits, type StrategySpec } from "@tapeverify/shared";
+import { getMarketRules, StrikeClient } from "@tapeverify/strike-sdk";
 import {
   AiInvalidError,
   AiRejectedError,

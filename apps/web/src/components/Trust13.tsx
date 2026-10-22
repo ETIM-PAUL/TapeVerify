@@ -181,9 +181,9 @@ export function RecordsCard({ ref_ }: { ref_: string }) {
     <div className="card">
       <h2>Signed records</h2>
       <p className="muted small">
-        Pit signs a snapshot of this trader's verified stats, chains each one to the last, and
-        writes a hash of each batch to a public blockchain. Changing history afterwards, even by
-        Pit, breaks the chain.
+        TapeVerify signs a snapshot of this trader's verified stats, chains each one to the last,
+        and writes a hash of each batch to a public blockchain. Changing history afterwards, even by
+        TapeVerify, breaks the chain.
       </p>
       {rows.length === 0 ? (
         <p className="muted">No records yet.</p>
@@ -251,9 +251,9 @@ export function RecordsCard({ ref_ }: { ref_: string }) {
             <summary className="muted small">Check it yourself</summary>
             <p className="muted small">
               Signing key: <code>{checked.v.publicKey}</code>. Record hash:{" "}
-              <code>{checked.v.recordHash}</code>. The record hash is the SHA-256 of "pit-record:"
+              <code>{checked.v.recordHash}</code>. The record hash is the SHA-256 of "tape-record:"
               plus the canonical JSON of the record. The chain memo reads{" "}
-              <code>pit1:&lt;batch id&gt;:&lt;batch hash&gt;</code>.
+              <code>tape1:&lt;batch id&gt;:&lt;batch hash&gt;</code>.
             </p>
           </details>
         </div>

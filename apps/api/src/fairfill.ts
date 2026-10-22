@@ -1,4 +1,4 @@
-import { type FillBasis, type LegScore, tradeFairScore } from "@pit/argus";
+import { type FillBasis, type LegScore, tradeFairScore } from "@tapeverify/verify";
 import type pg from "pg";
 
 export interface TradeFair {

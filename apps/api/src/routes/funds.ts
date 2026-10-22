@@ -7,7 +7,7 @@ import {
   getWithdrawQuote,
   StrikeApiError,
   toBaseUnits,
-} from "@pit/strike-sdk";
+} from "@tapeverify/strike-sdk";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { AppDeps } from "../app.js";

@@ -113,8 +113,8 @@ export function FollowPanel({
       {flags && (
         <div className="stack">
           <p className="warn">
-            Argus has flagged this caller. Following means copying someone with unresolved trust
-            concerns:
+            TapeVerify's trust checks have flagged this caller. Following means copying someone with
+            unresolved trust concerns:
           </p>
           <ul className="warnlist">
             {flags.map((f) => (

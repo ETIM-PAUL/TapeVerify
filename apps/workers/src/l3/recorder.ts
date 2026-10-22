@@ -1,11 +1,11 @@
-import { BookResetError, L3Book, type L3BookSnapshot } from "@pit/shared";
+import { BookResetError, L3Book, type L3BookSnapshot } from "@tapeverify/shared";
 import {
   getL3Snapshot,
   type L3Snapshot,
   L3Stream,
   type L3Update,
   type StrikeClient,
-} from "@pit/strike-sdk";
+} from "@tapeverify/strike-sdk";
 import { errMsg, type Logger } from "../log.js";
 import type { L3Store } from "./store.js";
 

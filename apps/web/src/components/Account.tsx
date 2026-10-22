@@ -51,7 +51,7 @@ export function Account({ user, onExpired }: { user: User; onExpired: () => void
         <div className="banner" role="alert">
           <span>
             {offline
-              ? "Can't reach Pit's server. Make sure the API is running, then try again."
+              ? "Can't reach TapeVerify's server. Make sure the API is running, then try again."
               : error}
           </span>
           <button type="button" className="ghost" onClick={load}>

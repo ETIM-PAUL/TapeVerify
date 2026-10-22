@@ -1,4 +1,4 @@
-import { type PostCall, telegramText, xText } from "@pit/shared";
+import { type PostCall, telegramText, xText } from "@tapeverify/shared";
 import type pg from "pg";
 import { buttonable, TelegramApi, TelegramError } from "./telegram.js";
 import { XClient, XError } from "./x.js";
@@ -83,7 +83,7 @@ export async function dispatchOutbox(
                       inline_keyboard: [
                         [
                           {
-                            text: r.event === "opened" ? "Follow on Pit" : "See the result",
+                            text: r.event === "opened" ? "Follow on TapeVerify" : "See the result",
                             url: followUrl,
                           },
                         ],

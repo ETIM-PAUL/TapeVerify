@@ -19,7 +19,7 @@ export interface MarketModel {
 export interface FeeModel {
   /** Strike taker commission rate (tier 0 unless overridden). */
   takerRate: number;
-  /** Pit's builder fee on every fill, in bps. */
+  /** TapeVerify's builder fee on every fill, in bps. */
   builderBps: number;
   /** Adverse price movement assumed on every market-type fill, in bps. */
   slippageBps: number;

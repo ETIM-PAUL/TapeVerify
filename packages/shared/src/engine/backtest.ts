@@ -241,7 +241,7 @@ export function backtestWarnings(
     "A backtest is not a prediction: it shows what these rules would have done on past candles only.",
   );
   w.push(
-    `Fills assume ${opts.fees.slippageBps} bps of slippage on market-style fills (entries, stops, rule exits), taker fees at ${(opts.fees.takerRate * 100).toFixed(3)}% plus Pit's ${opts.fees.builderBps} bps builder fee on every fill. Real fills depend on order-book depth, which isn't modelled.`,
+    `Fills assume ${opts.fees.slippageBps} bps of slippage on market-style fills (entries, stops, rule exits), taker fees at ${(opts.fees.takerRate * 100).toFixed(3)}% plus TapeVerify's ${opts.fees.builderBps} bps builder fee on every fill. Real fills depend on order-book depth, which isn't modelled.`,
   );
   w.push(
     "Funding payments aren't included: historical funding isn't indexed, so long-held positions will look better or worse than they were.",

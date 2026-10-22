@@ -256,6 +256,8 @@ tbody tr:last-child td {
 }
 .seg {
   display: inline-flex;
+  justify-self: start;
+  width: fit-content;
   border: 1px solid var(--line);
   border-radius: 8px;
   overflow: hidden;
@@ -460,17 +462,14 @@ label.check input {
   color: var(--text);
   text-decoration: none;
 }
-.brand-mark {
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
-  background: var(--accent);
-  color: var(--accent-ink);
-  display: grid;
-  place-items: center;
-  font-size: 16px;
-  font-weight: 800;
-  letter-spacing: 0;
+.wordmark {
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+.wordmark span {
+  font-weight: 500;
+  color: var(--muted);
 }
 .navlinks {
   display: flex;

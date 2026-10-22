@@ -58,7 +58,7 @@ describe("entering", () => {
     expect(o.body).toMatchObject({ symbol: SYMBOL, side: "buy", type: "market", size: "2.97029" }); // $100 x 3 / $101, floored to the step
     expect((o.body?.sl_order as { stop_price: string }).stop_price).toBe("99"); // 98.98 rounded to the 0.1 tick
     expect(o.body?.tp_order).toBeTruthy();
-    expect(String(o.body?.client_order_id)).toBe(`pitlive-${id}-1`);
+    expect(String(o.body?.client_order_id)).toBe(`tapelive-${id}-1`);
     expect(world.of("/v2/leverage")[0]?.body).toMatchObject({ symbol: SYMBOL, leverage: 3 });
 
     const k = await kinds(id);
@@ -321,7 +321,7 @@ describe("protection and exits", () => {
       side: "sell",
       reduce_only: true,
       type: "market",
-      client_order_id: expect.stringContaining("pitlive-close-"),
+      client_order_id: expect.stringContaining("tapelive-close-"),
     });
     expect(closes[0]?.headers["X-Builder-Fee-Bps"]).toBe("10");
     await tick(id, closeAt(2) + 5_000);
@@ -345,7 +345,7 @@ describe("protection and exits", () => {
     await tick(id, closeAt(1) + 10_000);
     const trail = world.of("/v2/order").find((c) => c.body?.type === "trailing_stop_market");
     expect(trail?.body).toMatchObject({ side: "sell", reduce_only: true, callback_rate: "2.5" });
-    expect((await trades(id))[0].trail_client_order_id).toContain("pitlive-trail-");
+    expect((await trades(id))[0].trail_client_order_id).toContain("tapelive-trail-");
     expect(await kinds(id)).toContain("protection_placed");
   });
 

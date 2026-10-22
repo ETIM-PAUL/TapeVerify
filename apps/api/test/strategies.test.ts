@@ -1,4 +1,4 @@
-import { describeStrategy, instantiateTemplate } from "@pit/shared";
+import { describeStrategy, instantiateTemplate } from "@tapeverify/shared";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   AiInvalidError,

@@ -14,7 +14,7 @@ import {
   type StrikeGateway,
   strategySpecSchema,
   TIMEFRAME_BAR_MS,
-} from "@pit/shared";
+} from "@tapeverify/shared";
 import {
   cancelOrder,
   closePositionOrder,
@@ -28,7 +28,7 @@ import {
   StrikeApiError,
   type StrikeClient,
   setLeverage,
-} from "@pit/strike-sdk";
+} from "@tapeverify/strike-sdk";
 import type pg from "pg";
 import { type TrackedCall, trackCall } from "../calls/tracker.js";
 import { errMsg, type Logger } from "../log.js";
@@ -487,7 +487,7 @@ export class LiveRunner {
 
     // 3. Trailing stop goes in once the entry has filled.
     if (t.trail_pct && !t.trail_client_order_id && !t.close_requested_at) {
-      const cid = `pitlive-trail-${t.id}`;
+      const cid = `tapelive-trail-${t.id}`;
       try {
         await placeTrailingStop(
           c,
@@ -540,7 +540,7 @@ export class LiveRunner {
     retry = false,
   ) {
     const n = retry ? `-r${Math.floor(now / 1000)}` : "";
-    const cid = `pitlive-close-${t.id}${n}`;
+    const cid = `tapelive-close-${t.id}${n}`;
     const side = t.side === "long" ? "sell" : "buy";
     try {
       await withRetry(
@@ -803,7 +803,7 @@ export class LiveRunner {
     }
     s.tradesToday++;
     const strategyId = crypto.randomUUID();
-    const cid = `pitlive-${run.id}-${seq}`;
+    const cid = `tapelive-${run.id}-${seq}`;
 
     // 1. Record the intent before anything leaves this process.
     const ins = await this.pool.query(

@@ -264,7 +264,7 @@ describe("closing a call", () => {
       type: "market",
       reduce_only: true,
       close_position: true,
-      client_order_id: `pit-close-${call.id}`,
+      client_order_id: `tape-close-${call.id}`,
     });
     expect(close?.headers["X-Builder-Fee-Bps"]).toBe("10");
     const cancels = t.calls

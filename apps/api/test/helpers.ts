@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
-import { KeyVault, LocalKekProvider, loadStrikeConfig } from "@pit/shared";
 import { base58, bech32 } from "@scure/base";
+import { KeyVault, LocalKekProvider, loadStrikeConfig } from "@tapeverify/shared";
 import pg from "pg";
 import type { DraftFn } from "../src/ai/translate.js";
 import { buildApp } from "../src/app.js";
@@ -63,7 +63,7 @@ export function fakeStrike(overrides: Record<string, Handler> = {}) {
     "POST /auth/builder/verify-signature": () => ({
       body: {
         account_id: "acct-1",
-        builder_code: "Pit",
+        builder_code: "TapeVerify",
         fee_share_bps: 10,
         api_wallet_id: 1,
         api_wallet_public_key: publicKey,
@@ -152,7 +152,7 @@ export async function makeApp(
   const strike = fakeStrike(overrides);
   const cfg = loadStrikeConfig({
     STRIKE_NETWORK: "testnet",
-    BUILDER_CODE: "Pit",
+    BUILDER_CODE: "TapeVerify",
     BUILDER_FEE_BPS: "10",
   });
   const gateway = new StrikeGateway(pool, vault, cfg, strike.fetchImpl);
@@ -196,6 +196,6 @@ export async function signIn(
     payload: { nonce, signature: "sig-sig-sig" },
   });
   if (v.statusCode !== 200) throw new Error(`verify failed: ${v.body}`);
-  const cookie = `pit_session=${v.cookies.find((c) => c.name === "pit_session")?.value}`;
+  const cookie = `tape_session=${v.cookies.find((c) => c.name === "tape_session")?.value}`;
   return { cookie, user: v.json().user, nonce };
 }

@@ -72,9 +72,9 @@ function EventRow({ e }: { e: FeedEvent }) {
   const who = (
     <>
       <a href={`/t/${e.trader.ref}`}>{e.trader.name}</a>{" "}
-      {e.trader.argus?.clean ? (
+      {e.trader.verify?.clean ? (
         <span className="badge clean">Clean record</span>
-      ) : e.trader.argus?.underReview ? (
+      ) : e.trader.verify?.underReview ? (
         <span className="badge review">Under review</span>
       ) : null}
     </>
@@ -369,7 +369,7 @@ export function Connections() {
             {c.telegram.linked ? (
               <p className="ok">
                 Linked{c.telegram.username ? ` as @${c.telegram.username}` : ""}. Add @
-                {c.telegram.bot} to your group and send /pit there.
+                {c.telegram.bot} to your group and send /tape there.
               </p>
             ) : (
               <>
@@ -401,10 +401,12 @@ export function Connections() {
         {!c.x.available ? (
           <p className="muted">Posting to X isn't set up on this server yet.</p>
         ) : c.channels.some((ch) => ch.kind === "x") ? (
-          <p className="ok">Your new calls are posted from Pit's X account, with a preview card.</p>
+          <p className="ok">
+            Your new calls are posted from TapeVerify's X account, with a preview card.
+          </p>
         ) : (
           <button type="button" onClick={() => api.post("/v1/me/channels/x").then(load)}>
-            Post my calls on Pit's X account
+            Post my calls on TapeVerify's X account
           </button>
         )}
       </div>

@@ -55,9 +55,9 @@ describe("call posts", () => {
 
   it("fits X's limit with the link counted as 23 characters", () => {
     const long = call({ trader: "x".repeat(400) });
-    const t = xText("opened", long, "https://pit.example/c/abc12345");
-    expect(t.endsWith("https://pit.example/c/abc12345")).toBe(true);
-    expect(t.length - "https://pit.example/c/abc12345".length + 23).toBeLessThanOrEqual(280);
+    const t = xText("opened", long, "https://tape.example/c/abc12345");
+    expect(t.endsWith("https://tape.example/c/abc12345")).toBe(true);
+    expect(t.length - "https://tape.example/c/abc12345".length + 23).toBeLessThanOrEqual(280);
     expect(xText("opened", call(), "https://p/c/x")).toContain("LONG BTC-USD 10x by alice");
   });
 });

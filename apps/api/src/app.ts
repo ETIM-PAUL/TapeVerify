@@ -1,8 +1,8 @@
 import cookie from "@fastify/cookie";
 import cors from "@fastify/cors";
 import rateLimit from "@fastify/rate-limit";
-import type { KeyVault } from "@pit/shared";
-import { StrikeApiError } from "@pit/strike-sdk";
+import type { KeyVault } from "@tapeverify/shared";
+import { StrikeApiError } from "@tapeverify/strike-sdk";
 import Fastify, { type FastifyReply, type FastifyRequest } from "fastify";
 import type pg from "pg";
 import { ZodError } from "zod";
@@ -10,7 +10,6 @@ import type { DraftFn } from "./ai/translate.js";
 import type { ApiConfig } from "./config.js";
 import { ReconnectRequiredError, type StrikeGateway } from "./gateway.js";
 import { accountRoutes } from "./routes/account.js";
-import { argusRoutes } from "./routes/argus.js";
 import { authRoutes } from "./routes/auth.js";
 import { backtestsRoutes } from "./routes/backtests.js";
 import { callsRoutes } from "./routes/calls.js";
@@ -23,6 +22,7 @@ import { socialRoutes } from "./routes/social.js";
 import { strategiesRoutes } from "./routes/strategies.js";
 import { tradersRoutes } from "./routes/traders.js";
 import { trustRoutes } from "./routes/trust.js";
+import { verifyRoutes } from "./routes/verify.js";
 import { type SessionUser, userForSession } from "./sessions.js";
 
 declare module "fastify" {
@@ -68,11 +68,11 @@ export async function buildApp(
   const d: AppDeps = {
     ...base,
     optionalUser: async (req) => {
-      const token = req.cookies.pit_session;
+      const token = req.cookies.tape_session;
       return token ? await userForSession(base.pool, token) : null;
     },
     requireUser: async (req, reply) => {
-      const token = req.cookies.pit_session;
+      const token = req.cookies.tape_session;
       const user = token ? await userForSession(base.pool, token) : null;
       if (!user) return reply.code(401).send({ error: "Not signed in" });
       req.user = user;
@@ -111,7 +111,7 @@ export async function buildApp(
   backtestsRoutes(app, d);
   liveRoutes(app, d);
   marketRoutes(app, d);
-  argusRoutes(app, d);
+  verifyRoutes(app, d);
   trustRoutes(app, d);
   socialRoutes(app, d);
   return app;

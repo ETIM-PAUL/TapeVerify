@@ -1,4 +1,4 @@
-import { runMigrations } from "@pit/shared";
+import { runMigrations } from "@tapeverify/shared";
 import pg from "pg";
 
 /** Creates (if needed) and migrates a throwaway `pit_test` database next to the dev one. */

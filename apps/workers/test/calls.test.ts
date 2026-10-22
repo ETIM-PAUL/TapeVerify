@@ -1,4 +1,4 @@
-import { StrikeClient } from "@pit/strike-sdk";
+import { StrikeClient } from "@tapeverify/strike-sdk";
 import type pg from "pg";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { CallTracker, type TrackedCall, trackCall } from "../src/calls/tracker.js";
@@ -76,7 +76,7 @@ async function insertCall(over: Record<string, unknown> = {}): Promise<TrackedCa
     status: "pending",
     expires_at: T0 + 3_600_000,
     strategy_id: crypto.randomUUID(),
-    primary_client_order_id: `pit-${id}`,
+    primary_client_order_id: `tape-${id}`,
     tp_client_order_id: "tp-cid",
     sl_client_order_id: "sl-cid",
     ...over,
@@ -267,7 +267,7 @@ describe("exit: open -> closed from real fills", () => {
   it.each([
     ["tp-cid", "tp"],
     ["sl-cid", "sl"],
-    ["pit-close-xyz", "manual"],
+    ["tape-close-xyz", "manual"],
     ["something-else", "external"],
   ])("order %s -> exit reason %s", async (cid, reason) => {
     const call = await open();
@@ -356,7 +356,7 @@ describe("following: the same tracker drives follows", () => {
     await pool.query(
       `INSERT INTO follows (id, call_id, user_id, symbol, side, leverage, margin_usd, size, requested_ms, mark_at_request, call_entry_price, drift_bps_at_request, strategy_id, primary_client_order_id, tp_client_order_id, sl_client_order_id, created_at)
        VALUES ($1, $2, $3, 'BTC-USD', 'long', 10, 50, 0.00625, $4, 80100, 80000, 12, $5, $6, 'f-tp', 'f-sl', to_timestamp($7))`,
-      [id, callRow.id, followerId, T0, strategy, `pit-${id}`, T0 / 1000],
+      [id, callRow.id, followerId, T0, strategy, `tape-${id}`, T0 / 1000],
     );
     const row = (): TrackedCall => ({
       id,
@@ -365,7 +365,7 @@ describe("following: the same tracker drives follows", () => {
       side: "long",
       status: "pending",
       strategy_id: strategy,
-      primary_client_order_id: `pit-${id}`,
+      primary_client_order_id: `tape-${id}`,
       tp_client_order_id: "f-tp",
       sl_client_order_id: "f-sl",
       entry_trade_id: null,
@@ -379,7 +379,7 @@ describe("following: the same tracker drives follows", () => {
       orders: [
         order({
           id: 70,
-          client_order_id: `pit-${id}`,
+          client_order_id: `tape-${id}`,
           strategy_id: strategy,
           is_primary: true,
           size: "0.00625",

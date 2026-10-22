@@ -4,7 +4,7 @@ import {
   getAccountFunding,
   type StrikeClient,
   type StrikeFill,
-} from "@pit/strike-sdk";
+} from "@tapeverify/strike-sdk";
 import type pg from "pg";
 import type { WorkerConfig } from "../config.js";
 import { errMsg, type Logger } from "../log.js";
@@ -63,7 +63,7 @@ const fillRow = (f: StrikeFill) => [
 ];
 
 /**
- * Stores every fill and funding payment of each connected Pit user. History is read by account id,
+ * Stores every fill and funding payment of each connected TapeVerify user. History is read by account id,
  * which Strike serves without auth, so it needs neither the user's key nor a live session.
  */
 export class FillsIngester {

@@ -16,7 +16,7 @@ import {
 } from "../src/index.js";
 
 const baseUrl = process.env.STRIKE_API_URL ?? "https://api-v2-testnet.strikefinance.org";
-const builderCode = process.env.BUILDER_CODE ?? "Pit";
+const builderCode = process.env.BUILDER_CODE ?? "TapeVerify";
 
 describe("strike testnet", () => {
   it("syncs clock, connects a builder wallet, signs a request and fetches account data", async () => {

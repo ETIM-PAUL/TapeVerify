@@ -10,7 +10,7 @@ import {
   specHash,
   strategySpecSchema,
   validateStrategy,
-} from "@pit/shared";
+} from "@tapeverify/shared";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { AppDeps } from "../app.js";
@@ -99,7 +99,7 @@ export function marketRoutes(app: FastifyInstance, d: AppDeps) {
   const terms = (l: ListingRow) => ({
     creatorShareBps: l.creator_share_bps,
     builderBps,
-    note: `Pit charges a ${builderBps / 100}% builder fee on every fill you trade, with or without a clone. The creator receives ${l.creator_share_bps / 100}% of that fee from Pit's side: cloning costs you nothing extra.`,
+    note: `TapeVerify charges a ${builderBps / 100}% builder fee on every fill you trade, with or without a clone. The creator receives ${l.creator_share_bps / 100}% of that fee from TapeVerify's side: cloning costs you nothing extra.`,
   });
 
   async function counts(ids: string[]) {
@@ -225,7 +225,7 @@ export function marketRoutes(app: FastifyInstance, d: AppDeps) {
             `Only ${rec.trades} closed live trade${rec.trades === 1 ? "" : "s"}: too few to say much.`,
           ]
         : []),
-      "You trade with your own budget: Pit's caps, stop-loss and loss limit apply to your clone exactly as to any live run.",
+      "You trade with your own budget: TapeVerify's caps, stop-loss and loss limit apply to your clone exactly as to any live run.",
     ];
     return {
       id: l.id,
@@ -523,7 +523,7 @@ export function marketRoutes(app: FastifyInstance, d: AppDeps) {
         day: x.day.toISOString().slice(0, 10),
         amount: String(x.amount),
       })),
-      note: "Earnings accrue per closed trade from Strike's fills and Pit's published builder fee. Accruals are paid out by the operator; paid entries show their payout reference.",
+      note: "Earnings accrue per closed trade from Strike's fills and TapeVerify's published builder fee. Accruals are paid out by the operator; paid entries show their payout reference.",
     };
   });
 

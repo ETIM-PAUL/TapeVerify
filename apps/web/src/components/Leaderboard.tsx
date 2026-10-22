@@ -118,9 +118,9 @@ export function Leaderboard() {
                   <td>{e.stats.trades}</td>
                   <td>{duration(e.stats.avgHoldMs)}</td>
                   <td>{e.risk}</td>
-                  <td>{e.argus?.score ?? "—"}</td>
+                  <td>{e.verify?.score ?? "—"}</td>
                   <td>
-                    <TrustBadge argus={e.argus} />
+                    <TrustBadge verify={e.verify} />
                   </td>
                 </tr>
               ))}

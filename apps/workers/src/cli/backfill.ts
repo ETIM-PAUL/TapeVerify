@@ -1,9 +1,9 @@
 /**
  * One-off history backfill (candles + trade seed + all users' fills), then exit.
- *   pnpm --filter @pit/workers backfill
+ *   pnpm --filter @tapeverify/workers backfill
  */
-import { createPool, loadStrikeConfig } from "@pit/shared";
-import { getMarketSymbols, StrikeClient } from "@pit/strike-sdk";
+import { createPool, loadStrikeConfig } from "@tapeverify/shared";
+import { getMarketSymbols, StrikeClient } from "@tapeverify/strike-sdk";
 import { loadWorkerConfig } from "../config.js";
 import { FillsIngester } from "../fills/ingest.js";
 import { createLogger } from "../log.js";

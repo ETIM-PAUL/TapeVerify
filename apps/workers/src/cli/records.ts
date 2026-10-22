@@ -1,6 +1,6 @@
-import { createPool, loadStrikeConfig } from "@pit/shared";
-import { recordsEnv, runRecords } from "../argus/records.js";
+import { createPool, loadStrikeConfig } from "@tapeverify/shared";
 import { createLogger } from "../log.js";
+import { recordsEnv, runRecords } from "../verify/records.js";
 
 const pool = createPool();
 try {

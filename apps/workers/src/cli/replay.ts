@@ -1,8 +1,8 @@
 /**
  * Rebuild the order book at a moment in time from recorded L3 data.
- *   pnpm --filter @pit/workers replay -- --symbol BTC-USD --at 2026-10-22T11:30:00Z [--depth 10] [--json]
+ *   pnpm --filter @tapeverify/workers replay -- --symbol BTC-USD --at 2026-10-22T11:30:00Z [--depth 10] [--json]
  */
-import { createPool } from "@pit/shared";
+import { createPool } from "@tapeverify/shared";
 import { CoverageError, rebuildBookAt } from "../l3/rebuild.js";
 
 function arg(name: string, fallback?: string): string | undefined {

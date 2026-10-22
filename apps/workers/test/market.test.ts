@@ -1,4 +1,4 @@
-import { StrikeClient } from "@pit/strike-sdk";
+import { StrikeClient } from "@tapeverify/strike-sdk";
 import type pg from "pg";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { loadWorkerConfig } from "../src/config.js";

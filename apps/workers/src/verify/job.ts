@@ -1,17 +1,17 @@
-import { recomputeReputation, runDetection } from "@pit/argus";
+import { recomputeReputation, runDetection } from "@tapeverify/verify";
 import type pg from "pg";
 import { errMsg, type Logger } from "../log.js";
 
-/** One Argus pass: run the detectors over what's indexed, then refresh every affected reputation. */
-export async function runArgus(pool: pg.Pool, log?: Logger, now = Date.now()) {
+/** One trust-check pass: run the detectors over what's indexed, then refresh every affected reputation. */
+export async function runVerify(pool: pg.Pool, log?: Logger, now = Date.now()) {
   const d = await runDetection(pool, now);
   const users = await recomputeReputation(pool, undefined, now);
-  if (d.raised) log?.warn("argus raised findings", { ...d });
-  else log?.info("argus pass", { ...d, users });
+  if (d.raised) log?.warn("verify raised findings", { ...d });
+  else log?.info("verify pass", { ...d, users });
   return { ...d, users };
 }
 
-export class ArgusJob {
+export class VerifyJob {
   private timer: ReturnType<typeof setInterval> | null = null;
   private busy = false;
   constructor(
@@ -25,9 +25,9 @@ export class ArgusJob {
       if (this.busy) return;
       this.busy = true;
       try {
-        await runArgus(this.pool, this.log);
+        await runVerify(this.pool, this.log);
       } catch (e) {
-        this.log.error("argus job failed", { err: errMsg(e) });
+        this.log.error("verify job failed", { err: errMsg(e) });
       } finally {
         this.busy = false;
       }

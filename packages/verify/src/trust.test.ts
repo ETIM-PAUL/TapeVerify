@@ -261,7 +261,7 @@ describe("verifying a record bundle", () => {
         },
       }),
     );
-    expect(f2).toContain("signer is the published Pit key");
+    expect(f2).toContain("signer is the published TapeVerify key");
     expect(f2).toContain("record signature is valid");
   });
 
@@ -278,7 +278,7 @@ describe("verifying a record bundle", () => {
       ]),
     );
     expect(
-      failing(bundle({ tamper: (b) => b.anchor && (b.anchor.memo = "pit1:7:wrong") })),
+      failing(bundle({ tamper: (b) => b.anchor && (b.anchor.memo = "tape1:7:wrong") })),
     ).toContain("anchor memo names this batch");
   });
 
@@ -322,7 +322,7 @@ describe("the Solana memo transaction", () => {
   it("lays out a legacy transaction the network can parse, signed over its message", () => {
     const payer = generateSigningKey();
     const blockhash = base58Encode(Uint8Array.from({ length: 32 }, (_, i) => i + 1));
-    const memo = "pit1:3:abcdef";
+    const memo = "tape1:3:abcdef";
     const { raw, signature } = buildMemoTransaction(payer, memo, blockhash);
 
     expect(raw[0]).toBe(1); // one signature

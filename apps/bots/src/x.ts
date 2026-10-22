@@ -12,7 +12,7 @@ export class XError extends Error {
   }
 }
 
-/** Posts from Pit's own X account with a user-context access token. The link's card comes from the page's meta tags. */
+/** Posts from TapeVerify's own X account with a user-context access token. The link's card comes from the page's meta tags. */
 export class XClient {
   constructor(
     private readonly accessToken: string,

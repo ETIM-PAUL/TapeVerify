@@ -41,7 +41,7 @@ const envSchema = z.object({
   STRIKE_PRICE_WS_URL: z.string().url().optional(),
   STRIKE_USER_WS_URL: z.string().url().optional(),
   STRIKE_STATS_URL: z.string().url().optional(),
-  BUILDER_CODE: z.string().min(1).default("Pit"),
+  BUILDER_CODE: z.string().min(1).default("TapeVerify"),
   BUILDER_FEE_BPS: z.coerce.number().int().min(0).max(100).default(0),
 });
 

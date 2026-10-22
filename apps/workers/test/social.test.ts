@@ -5,7 +5,7 @@ import { testPool } from "./helpers.js";
 
 let pool: pg.Pool;
 const users: string[] = [];
-const WEB = "https://pit.example";
+const WEB = "https://tape.example";
 
 beforeAll(() => {
   pool = testPool();

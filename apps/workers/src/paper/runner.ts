@@ -8,14 +8,14 @@ import {
   type StrategySpec,
   strategySpecSchema,
   TIMEFRAME_BAR_MS,
-} from "@pit/shared";
+} from "@tapeverify/shared";
 import {
   getFeeTiers,
   getMarketRules,
   getMarkPrice,
   type MarketRules,
   type StrikeClient,
-} from "@pit/strike-sdk";
+} from "@tapeverify/strike-sdk";
 import type pg from "pg";
 import { errMsg, type Logger } from "../log.js";
 

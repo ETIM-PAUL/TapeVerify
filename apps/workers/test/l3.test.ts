@@ -1,5 +1,5 @@
-import { L3Book, sameBook } from "@pit/shared";
-import type { L3Snapshot, StrikeClient } from "@pit/strike-sdk";
+import { L3Book, sameBook } from "@tapeverify/shared";
+import type { L3Snapshot, StrikeClient } from "@tapeverify/strike-sdk";
 import type pg from "pg";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { CoverageError, l3Coverage, rebuildBookAt } from "../src/l3/rebuild.js";

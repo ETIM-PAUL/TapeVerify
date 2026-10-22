@@ -1,6 +1,6 @@
-import { createPool } from "@pit/shared";
-import { scoreFills } from "../argus/fairfill.js";
+import { createPool } from "@tapeverify/shared";
 import { createLogger } from "../log.js";
+import { scoreFills } from "../verify/fairfill.js";
 
 const pool = createPool();
 try {

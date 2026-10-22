@@ -157,8 +157,8 @@ export function CallPage({ code }: { code: string }) {
         </p>
       </div>
 
-      {detail.argus && (detail.argus.penalties.length > 0 || detail.argus.clean) && (
-        <ReputationCard argus={detail.argus} />
+      {detail.verify && (detail.verify.penalties.length > 0 || detail.verify.clean) && (
+        <ReputationCard verify={detail.verify} />
       )}
 
       {!user ? (

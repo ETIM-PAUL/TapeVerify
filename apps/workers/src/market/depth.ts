@@ -1,4 +1,4 @@
-import { getDepth, getTrades, type StrikeClient } from "@pit/strike-sdk";
+import { getDepth, getTrades, type StrikeClient } from "@tapeverify/strike-sdk";
 import type pg from "pg";
 import type { WorkerConfig } from "../config.js";
 import { errMsg, type Logger } from "../log.js";

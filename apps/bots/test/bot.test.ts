@@ -51,10 +51,10 @@ async function code(userId: string, expiresMs = Date.now() + 600_000) {
 
 describe("parsing commands", () => {
   it("handles bot-name suffixes, arguments and non-commands", () => {
-    expect(parseCommand("/pit")).toEqual({ cmd: "pit", arg: "" });
-    expect(parseCommand("/pit@PitBot")).toEqual({ cmd: "pit", arg: "" });
+    expect(parseCommand("/tape")).toEqual({ cmd: "tape", arg: "" });
+    expect(parseCommand("/tape@TapeVerifyBot")).toEqual({ cmd: "tape", arg: "" });
     expect(parseCommand("/LINK  ABC123 ")).toEqual({ cmd: "link", arg: "ABC123" });
-    expect(parseCommand("hello /pit")).toBeNull();
+    expect(parseCommand("hello /tape")).toBeNull();
     expect(parseCommand(undefined)).toBeNull();
   });
 });
@@ -97,7 +97,7 @@ describe("linking a Telegram account", () => {
     ).toBe(0);
   });
 
-  it("won't link one Telegram account to two Pit accounts", async () => {
+  it("won't link one Telegram account to two TapeVerify accounts", async () => {
     const [a, b] = [await user(), await user()];
     const tg = ++nextTg;
     await handleUpdate(pool, fakeTelegram().api, URLS, dm(tg, `/link ${await code(a)}`));
@@ -136,7 +136,7 @@ describe("registering a group", () => {
   it("lets a linked group admin start and stop posting", async () => {
     const { u, tg } = await linked();
     const t = fakeTelegram();
-    await handleUpdate(pool, t.api, URLS, group(tg, "/pit@PitBot", -4242));
+    await handleUpdate(pool, t.api, URLS, group(tg, "/tape@TapeVerifyBot", -4242));
     expect(await channels(u)).toEqual([{ target: "-4242", title: "Alpha Room", active: true }]);
     expect(t.sent.find((s) => s.method === "getChatMember")?.body).toMatchObject({
       chat_id: -4242,
@@ -144,7 +144,7 @@ describe("registering a group", () => {
     });
     await handleUpdate(pool, t.api, URLS, group(tg, "/stop", -4242));
     expect((await channels(u))[0]?.active).toBe(false);
-    await handleUpdate(pool, t.api, URLS, group(tg, "/pit", -4242));
+    await handleUpdate(pool, t.api, URLS, group(tg, "/tape", -4242));
     expect(await channels(u)).toHaveLength(1);
     expect((await channels(u))[0]?.active).toBe(true);
   });
@@ -152,18 +152,18 @@ describe("registering a group", () => {
   it("refuses someone who isn't linked, isn't an admin, or is in a private chat", async () => {
     const stranger = ++nextTg;
     const t1 = fakeTelegram();
-    await handleUpdate(pool, t1.api, URLS, group(stranger, "/pit", -5151));
-    expect(t1.messages()[0]?.body.text).toMatch(/Link your Pit account first/);
+    await handleUpdate(pool, t1.api, URLS, group(stranger, "/tape", -5151));
+    expect(t1.messages()[0]?.body.text).toMatch(/Link your TapeVerify account first/);
 
     const { u, tg } = await linked();
     const member = fakeTelegram((m) =>
       m === "getChatMember" ? { ok: true, result: { status: "member" } } : undefined,
     );
-    await handleUpdate(pool, member.api, URLS, group(tg, "/pit", -5252));
+    await handleUpdate(pool, member.api, URLS, group(tg, "/tape", -5252));
     expect(member.messages()[0]?.body.text).toMatch(/Only group admins/);
 
     const priv = fakeTelegram();
-    await handleUpdate(pool, priv.api, URLS, dm(tg, "/pit"));
+    await handleUpdate(pool, priv.api, URLS, dm(tg, "/tape"));
     expect(priv.messages()[0]?.body.text).toMatch(/group/);
     expect(await channels(u)).toEqual([]);
   });
@@ -189,10 +189,10 @@ describe("showing a call in a group", () => {
     expect(m.text).toContain("LONG BTC-USD 10x");
     expect(m.text).toContain("Entry 80,000 (from the fill)");
     expect(m.reply_markup.inline_keyboard[0][0]).toEqual({
-      text: "Follow on Pit",
-      url: `https://pit.example/call/${code}`,
+      text: "Follow on TapeVerify",
+      url: `https://tape.example/call/${code}`,
     });
-    expect(m.link_preview_options.url).toBe(`https://share.pit.example/c/${code}`);
+    expect(m.link_preview_options.url).toBe(`https://share.tape.example/c/${code}`);
   });
 
   it("falls back to a plain link where Telegram would reject a localhost button, and says when a call doesn't exist", async () => {

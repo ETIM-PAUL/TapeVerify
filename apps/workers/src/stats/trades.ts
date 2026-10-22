@@ -1,4 +1,4 @@
-import { type BuiltTrade, buildTrades, entryNotional, sumSigned } from "@pit/shared";
+import { type BuiltTrade, buildTrades, entryNotional, sumSigned } from "@tapeverify/shared";
 import type pg from "pg";
 import { insertRows } from "../sql.js";
 

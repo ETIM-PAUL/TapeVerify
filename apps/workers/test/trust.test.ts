@@ -1,3 +1,4 @@
+import type { StrikeClient } from "@tapeverify/strike-sdk";
 import {
   anchorPending,
   generateSigningKey,
@@ -5,13 +6,12 @@ import {
   sealBatch,
   takeSnapshots,
   verifyRecord,
-} from "@pit/argus";
-import type { StrikeClient } from "@pit/strike-sdk";
+} from "@tapeverify/verify";
 import type pg from "pg";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
-import { scoreFills } from "../src/argus/fairfill.js";
-import { sampleHealth } from "../src/argus/health.js";
-import { checkLiquidations } from "../src/argus/liquidation.js";
+import { scoreFills } from "../src/verify/fairfill.js";
+import { sampleHealth } from "../src/verify/health.js";
+import { checkLiquidations } from "../src/verify/liquidation.js";
 import { testPool } from "./helpers.js";
 
 const MIN = 60_000;
@@ -331,8 +331,8 @@ describe("signed, chained, anchored records", () => {
     );
     expect(v?.bundle.payload.stats).toMatchObject({ trades: 5 });
     // What was written on-chain is the batch hash, and nothing about any trader.
-    const memo = [...chain.txs.values()].find((m) => m.startsWith(`pit1:${v?.bundle.batch?.id}:`));
-    expect(memo).toBe(`pit1:${v?.bundle.batch?.id}:${v?.bundle.batch?.batchHash}`);
+    const memo = [...chain.txs.values()].find((m) => m.startsWith(`tape1:${v?.bundle.batch?.id}:`));
+    expect(memo).toBe(`tape1:${v?.bundle.batch?.id}:${v?.bundle.batch?.batchHash}`);
     expect(memo).not.toContain(u.account);
   });
 
@@ -373,7 +373,7 @@ describe("signed, chained, anchored records", () => {
       .map((c) => c.name);
     expect(clean).toEqual(["batch anchored on-chain"]);
 
-    // Pit (or anyone with database access) bumps a number.
+    // TapeVerify (or anyone with database access) bumps a number.
     await pool.query(
       "UPDATE record_snapshots SET payload = jsonb_set(payload, '{stats,netPnl}', '\"999999\"') WHERE id = $1",
       [id],
@@ -385,7 +385,7 @@ describe("signed, chained, anchored records", () => {
 
     // ...and recomputes the hash too: the signature and the batch's Merkle root no longer agree.
     const b = await recordBundle(pool, id);
-    const { recordHash: rh } = await import("@pit/argus");
+    const { recordHash: rh } = await import("@tapeverify/verify");
     const fixed = rh(b!.payload);
     await pool.query("UPDATE record_snapshots SET record_hash = $2 WHERE id = $1", [id, fixed]);
     const bad2 = (await verifyRecord(pool, id, key.publicKey, null))?.checks

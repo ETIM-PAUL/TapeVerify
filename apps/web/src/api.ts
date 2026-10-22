@@ -1,4 +1,4 @@
-const BASE = import.meta.env.VITE_PIT_API_URL ?? "http://localhost:3001";
+const BASE = import.meta.env.VITE_TAPE_API_URL ?? "http://localhost:3001";
 
 export class ApiError extends Error {
   constructor(
@@ -98,7 +98,7 @@ export interface LiveView {
     | { ok: true; driftBps: number }
     | { ok: false; reason: "not_open" | "expired" | "drifted"; driftBps?: number };
 }
-export interface ArgusInfo {
+export interface VerifyInfo {
   score: number;
   performance: number;
   confidence: number;
@@ -114,7 +114,7 @@ export interface ArgusInfo {
     points: number;
   }>;
 }
-export interface ArgusFinding {
+export interface VerifyFinding {
   id: string;
   kind: string;
   severity: string;
@@ -125,9 +125,9 @@ export interface ArgusFinding {
   canAppeal: boolean;
   appeal: { status: string; message: string; decisionNote: string | null } | null;
 }
-export interface MyArgus {
-  reputation: ArgusInfo | null;
-  findings: ArgusFinding[];
+export interface MyVerify {
+  reputation: VerifyInfo | null;
+  findings: VerifyFinding[];
   history: Array<{ ts: number; score: number; previous: number | null; reason: string }>;
 }
 export interface TraderStats {
@@ -155,7 +155,7 @@ export interface CallDetail {
   call: Call;
   live: LiveView | null;
   stats: TraderStats;
-  argus: ArgusInfo | null;
+  verify: VerifyInfo | null;
   followerFills: { fills: number; avgScore: number; avgSlippageBps: number | null } | null;
   viewer: { isOwner: boolean; follow: FollowInfo | null } | null;
 }
@@ -186,7 +186,7 @@ export interface LeaderEntry {
   stats: StatsOut;
   volume: string;
   risk: "low" | "medium" | "high" | "unknown";
-  argus: ArgusInfo | null;
+  verify: VerifyInfo | null;
 }
 export interface Leaderboard {
   timeframe: Timeframe;
@@ -294,7 +294,7 @@ export interface Profile {
   viewer: { isSelf: boolean; following: boolean } | null;
   fairFill: FairSummary | null;
   trader: { ref: string; handle: string | null; chain: string; address: string };
-  argus: ArgusInfo | null;
+  verify: VerifyInfo | null;
   stats: StatsOut;
   volume: string;
   risk: LeaderEntry["risk"];
@@ -626,7 +626,7 @@ export interface FeedEvent {
     ref: string;
     name: string;
     chain: string;
-    argus: { clean?: boolean; underReview?: boolean; score?: number } | null;
+    verify: { clean?: boolean; underReview?: boolean; score?: number } | null;
   };
   call?: {
     code: string;

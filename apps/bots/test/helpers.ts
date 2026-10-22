@@ -40,4 +40,4 @@ export function fakeTelegram(
   };
 }
 
-export const URLS = { web: "https://pit.example", share: "https://share.pit.example" };
+export const URLS = { web: "https://tape.example", share: "https://share.tape.example" };

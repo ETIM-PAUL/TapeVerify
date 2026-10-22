@@ -66,7 +66,7 @@ export function shareHtml(opts: {
 <meta name="description" content="${dsc}">
 <link rel="canonical" href="${share}">
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="Pit">
+<meta property="og:site_name" content="TapeVerify">
 <meta property="og:title" content="${t}">
 <meta property="og:description" content="${dsc}">
 <meta property="og:url" content="${share}">
@@ -79,7 +79,7 @@ export function shareHtml(opts: {
 <meta name="twitter:description" content="${dsc}">
 <meta name="twitter:image" content="${img}">
 <meta http-equiv="refresh" content="0; url=${web}">
-</head><body><p><a href="${web}">Open this call on Pit</a></p>
+</head><body><p><a href="${web}">Open this call on TapeVerify</a></p>
 <script>location.replace(${JSON.stringify(opts.webUrl).replace(/</g, "\\u003c")})</script>
 </body></html>`;
 }
@@ -136,7 +136,7 @@ export function shareRoutes(app: FastifyInstance, d: AppDeps) {
           .header("Content-Type", "text/html; charset=utf-8")
           .send(
             shareHtml({
-              title: "Call not found · Pit",
+              title: "Call not found · TapeVerify",
               description: "This call doesn't exist.",
               shareUrl: base,
               imageUrl: `${base}/og/none.png`,
@@ -151,7 +151,7 @@ export function shareRoutes(app: FastifyInstance, d: AppDeps) {
           ? ""
           : ` · ${og.resultPct >= 0 ? "+" : ""}${og.resultPct.toFixed(2)}%`;
       const title = `${row.symbol} ${row.side} ${row.leverage}x${row.entry_price ? ` · entry ${price(row.entry_price)}` : ""}${move}`;
-      const description = `${og.trader}'s call on Pit: entry recorded from the fill on Strike. ${og.footer}.`;
+      const description = `${og.trader}'s call on TapeVerify: entry recorded from the fill on Strike. ${og.footer}.`;
       return reply
         .header("Content-Type", "text/html; charset=utf-8")
         .header("Cache-Control", "public, max-age=30")

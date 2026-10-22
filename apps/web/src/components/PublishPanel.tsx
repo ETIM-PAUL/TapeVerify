@@ -24,8 +24,8 @@ export function PublishPanel({ strategyId, name }: { strategyId: string; name: s
       <h2>Publish to the marketplace</h2>
       <p className="muted small">
         A listing shows your real live record for exactly these rules, so run it live first. You
-        earn a share of Pit's builder fee on every trade clones make. Cloning costs them nothing
-        extra.
+        earn a share of TapeVerify's builder fee on every trade clones make. Cloning costs them
+        nothing extra.
       </p>
       <div className="row">
         <label>

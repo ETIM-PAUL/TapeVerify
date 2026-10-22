@@ -74,7 +74,7 @@ export interface VaultInputs {
   activeDays: number;
   totalReturnPct: number | null;
   maxDrawdownPct: number | null;
-  /** From Argus. */
+  /** From the trust checks. */
   clean: boolean;
   reputation: number | null;
 }
@@ -130,7 +130,7 @@ export function vaultEligibility(
     },
     {
       key: "clean",
-      label: "Clean record (Argus)",
+      label: "Clean record",
       have: i.clean ? "yes" : "no",
       need: "yes",
       met: i.clean,

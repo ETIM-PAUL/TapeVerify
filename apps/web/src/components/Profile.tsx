@@ -164,7 +164,7 @@ export function Profile({ ref_ }: { ref_: string }) {
         </select>
       </div>
 
-      <ReputationCard argus={p.argus} />
+      <ReputationCard verify={p.verify} />
 
       <div className="stats">
         <div className="stat">

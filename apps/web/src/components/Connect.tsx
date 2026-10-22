@@ -39,8 +39,8 @@ export function Connect({ onDone }: { onDone: (user: User, wallet: ActiveWallet)
       <h1>Connect a wallet</h1>
       <p className="muted">
         Sign in with your Cardano, Ethereum or Solana wallet. You'll sign one message that creates a
-        trading key for Pit on Strike. It can trade but cannot withdraw: withdrawals always need
-        your wallet.
+        trading key for TapeVerify on Strike. It can trade but cannot withdraw: withdrawals always
+        need your wallet.
       </p>
       {wallets.length === 0 && (
         <p className="warn">

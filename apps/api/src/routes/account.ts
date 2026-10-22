@@ -1,4 +1,4 @@
-import { getAccount, getPositions, getTransactions, TX_TYPE } from "@pit/strike-sdk";
+import { getAccount, getPositions, getTransactions, TX_TYPE } from "@tapeverify/strike-sdk";
 import type { FastifyInstance } from "fastify";
 import type { AppDeps } from "../app.js";
 

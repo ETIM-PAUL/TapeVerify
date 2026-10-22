@@ -1,5 +1,5 @@
-import type { L3BookSnapshot } from "@pit/shared";
-import type { L3Update } from "@pit/strike-sdk";
+import type { L3BookSnapshot } from "@tapeverify/shared";
+import type { L3Update } from "@tapeverify/strike-sdk";
 import type pg from "pg";
 import { insertRows } from "../sql.js";
 

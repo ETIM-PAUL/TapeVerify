@@ -146,7 +146,7 @@ export interface RecordPayload {
   prevHash: string | null;
 }
 
-export const recordHash = (p: RecordPayload) => sha256Hex(`pit-record:${canonicalJson(p)}`);
+export const recordHash = (p: RecordPayload) => sha256Hex(`tape-record:${canonicalJson(p)}`);
 
 export function tradesDigest(
   trades: Array<{
@@ -167,7 +167,7 @@ export function tradesDigest(
         a.closedMs - b.closedMs || a.openedMs - b.openedMs || a.symbol.localeCompare(b.symbol),
     )
     .map((t) => canonicalJson(t));
-  return sha256Hex(`pit-trades:${rows.join("\n")}`);
+  return sha256Hex(`tape-trades:${rows.join("\n")}`);
 }
 
 export interface BatchPayload {
@@ -177,10 +177,10 @@ export interface BatchPayload {
   merkleRoot: string;
   prevHash: string | null;
 }
-export const batchHash = (b: BatchPayload) => sha256Hex(`pit-batch:${canonicalJson(b)}`);
+export const batchHash = (b: BatchPayload) => sha256Hex(`tape-batch:${canonicalJson(b)}`);
 
 /** The text written on-chain. Short, human-readable and enough to find the batch. */
-export const anchorMemo = (batchId: number, hash: string) => `pit1:${batchId}:${hash}`;
+export const anchorMemo = (batchId: number, hash: string) => `tape1:${batchId}:${hash}`;
 
 export interface RecordBundle {
   payload: RecordPayload;
@@ -209,7 +209,7 @@ export interface Check {
 export function verifyBundle(b: RecordBundle, trustedKey: string): Check[] {
   const checks: Check[] = [];
   const push = (name: string, ok: boolean, detail?: string) => checks.push({ name, ok, detail });
-  push("signer is the published Pit key", b.signerKey === trustedKey);
+  push("signer is the published TapeVerify key", b.signerKey === trustedKey);
   push("record hash matches its contents", recordHash(b.payload) === b.recordHash);
   push("record signature is valid", verifyHex(trustedKey, b.recordHash, b.signature));
   push(

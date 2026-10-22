@@ -1,20 +1,20 @@
-import { type PostCall, telegramText } from "@pit/shared";
+import { type PostCall, telegramText } from "@tapeverify/shared";
 import type pg from "pg";
 import { postCall, type Urls } from "./dispatch.js";
 import { buttonable, type TelegramApi, type TgMessage, type TgUpdate } from "./telegram.js";
 
 const HELP = [
-  "<b>Pit bot</b>",
-  "Post your Pit calls to a group, and let people follow them in one tap.",
+  "<b>TapeVerify bot</b>",
+  "Post your TapeVerify calls to a group, and let people follow them in one tap.",
   "",
-  "1. In Pit, open Connections and copy your link code.",
+  "1. In TapeVerify, open Connections and copy your link code.",
   "2. Send it here: <code>/link CODE</code>",
-  "3. Add me to your group, then send <code>/pit</code> there (group admins only).",
+  "3. Add me to your group, then send <code>/tape</code> there (group admins only).",
   "",
   "In a group: <code>/call CODE</code> shows a call, <code>/stop</code> stops posting.",
 ].join("\n");
 
-/** "/pit@PitBot arg" → ["pit", "arg"]. Returns null for anything that isn't a command. */
+/** "/tape@TapeVerifyBot arg" → ["tape", "arg"]. Returns null for anything that isn't a command. */
 export function parseCommand(text: string | undefined): { cmd: string; arg: string } | null {
   const m = text?.trim().match(/^\/([a-z_]+)(?:@\w+)?(?:\s+(.*))?$/i);
   return m ? { cmd: (m[1] as string).toLowerCase(), arg: (m[2] ?? "").trim() } : null;
@@ -61,7 +61,7 @@ export async function handleUpdate(
     );
     if (!hit.rows[0])
       return void (await say(
-        "That code is wrong or has expired. Get a new one in Pit under Connections.",
+        "That code is wrong or has expired. Get a new one in TapeVerify under Connections.",
       ));
     try {
       await pool.query(
@@ -71,19 +71,21 @@ export async function handleUpdate(
       );
     } catch (e) {
       if ((e as { code?: string }).code === "23505")
-        return void (await say("This Telegram account is already linked to another Pit account."));
+        return void (await say(
+          "This Telegram account is already linked to another TapeVerify account.",
+        ));
       throw e;
     }
-    await say("Linked. Now add me to a group and send <code>/pit</code> there.");
+    await say("Linked. Now add me to a group and send <code>/tape</code> there.");
     return;
   }
 
-  if (c.cmd === "pit" || c.cmd === "stop") {
+  if (c.cmd === "tape" || c.cmd === "stop") {
     if (!isGroup(m)) return void (await say("Use this in a group I've been added to."));
     const user = await linkedUser(pool, m.from.id);
     if (!user)
       return void (await say(
-        "Link your Pit account first: message me privately with <code>/link CODE</code>.",
+        "Link your TapeVerify account first: message me privately with <code>/link CODE</code>.",
       ));
     const member = await api.getChatMember(m.chat.id, m.from.id).catch(() => null);
     if (!member || (member.status !== "creator" && member.status !== "administrator"))
@@ -100,7 +102,7 @@ export async function handleUpdate(
        ON CONFLICT (user_id, kind, target) DO UPDATE SET active = true, title = EXCLUDED.title, created_at = CASE WHEN post_channels.active THEN post_channels.created_at ELSE now() END`,
       [user, String(m.chat.id), m.chat.title ?? null],
     );
-    await say("Done. Your new Pit calls will be posted here, with a button to follow them.");
+    await say("Done. Your new TapeVerify calls will be posted here, with a button to follow them.");
     return;
   }
 
@@ -124,7 +126,9 @@ export async function handleUpdate(
         show_above_text: false,
       },
       ...(button
-        ? { reply_markup: { inline_keyboard: [[{ text: "Follow on Pit", url: followUrl }]] } }
+        ? {
+            reply_markup: { inline_keyboard: [[{ text: "Follow on TapeVerify", url: followUrl }]] },
+          }
         : {}),
     });
   }

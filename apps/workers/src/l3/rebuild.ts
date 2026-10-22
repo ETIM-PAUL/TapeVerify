@@ -1,4 +1,4 @@
-import { L3Book, type L3BookSnapshot, type L3UpdateMessage } from "@pit/shared";
+import { L3Book, type L3BookSnapshot, type L3UpdateMessage } from "@tapeverify/shared";
 import type pg from "pg";
 
 /** The requested time isn't covered by a gap-free recording. */

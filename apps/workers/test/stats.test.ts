@@ -1,5 +1,5 @@
-import { computeStats, loadTraderData } from "@pit/shared";
-import { StrikeClient } from "@pit/strike-sdk";
+import { computeStats, loadTraderData } from "@tapeverify/shared";
+import { StrikeClient } from "@tapeverify/strike-sdk";
 import type pg from "pg";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { loadWorkerConfig } from "../src/config.js";

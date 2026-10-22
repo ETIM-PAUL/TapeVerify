@@ -1,4 +1,9 @@
-import { getMarketRules, type MarketRules, StrikeApiError, StrikeClient } from "@pit/strike-sdk";
+import {
+  getMarketRules,
+  type MarketRules,
+  StrikeApiError,
+  StrikeClient,
+} from "@tapeverify/strike-sdk";
 import type pg from "pg";
 import type { StrikeConfig } from "./config.js";
 import type { KeyVault, SealedSecret } from "./vault/index.js";

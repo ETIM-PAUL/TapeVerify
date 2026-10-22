@@ -1,5 +1,5 @@
 {
-  "name": "@pit/bots",
+  "name": "@tapeverify/bots",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -10,7 +10,7 @@
     "check": "tsx --env-file-if-exists=../../.env src/cli/check.ts"
   },
   "dependencies": {
-    "@pit/shared": "workspace:*",
+    "@tapeverify/shared": "workspace:*",
     "pg": "^8.23.1"
   },
   "devDependencies": {

@@ -4,21 +4,21 @@ import {
   type MarketRulesLite,
   sizeFromMargin,
   validateCallOrder,
-} from "@pit/shared";
+} from "@tapeverify/shared";
 import {
   getAccount,
   getAccountPositions,
   placeStrategyOrder,
   StrikeApiError,
   setLeverage,
-} from "@pit/strike-sdk";
+} from "@tapeverify/strike-sdk";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { AppDeps } from "../app.js";
-import { seriousFlags } from "../argus.js";
 import { closeTracked } from "../calls/close.js";
 import { hasUnfinished } from "../calls/live.js";
 import { callWithTrader, type FollowRow, followView } from "../calls/model.js";
+import { seriousFlags } from "../verify.js";
 
 const FOLLOW_ERRORS = {
   expired: "This call's follow window is over.",
@@ -178,7 +178,7 @@ export function followsRoutes(app: FastifyInstance, d: AppDeps) {
           call.entry_price,
           f.driftBps,
           strategyId,
-          `pit-${id}`,
+          `tape-${id}`,
         ],
       );
     } catch (e) {
@@ -197,7 +197,7 @@ export function followsRoutes(app: FastifyInstance, d: AppDeps) {
           c,
           {
             strategy_id: strategyId,
-            client_order_id: `pit-${id}`,
+            client_order_id: `tape-${id}`,
             symbol: call.symbol,
             side: call.side === "long" ? "buy" : "sell",
             type: "market",

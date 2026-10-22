@@ -1,5 +1,5 @@
 {
-  "name": "@pit/shared",
+  "name": "@tapeverify/shared",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -11,7 +11,7 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@pit/strike-sdk": "workspace:*",
+    "@tapeverify/strike-sdk": "workspace:*",
     "pg": "^8.23.1",
     "zod": "^3.24.0"
   },

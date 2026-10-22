@@ -275,7 +275,7 @@ describe("following a call", () => {
       side: "sell",
       reduce_only: true,
       close_position: true,
-      client_order_id: `pit-close-${id}`,
+      client_order_id: `tape-close-${id}`,
     });
     await t.close();
   });

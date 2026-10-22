@@ -41,7 +41,7 @@ describe("auth", () => {
       payload: { nonce, signature: "sig-sig-sig" },
     });
     expect(v.statusCode).toBe(200);
-    const c = v.cookies.find((x) => x.name === "pit_session");
+    const c = v.cookies.find((x) => x.name === "tape_session");
     expect(c?.httpOnly).toBe(true);
     expect(c?.sameSite).toBe("Lax");
 

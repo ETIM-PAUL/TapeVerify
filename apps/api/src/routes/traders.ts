@@ -1,8 +1,7 @@
-import { RANK_MINIMUMS, type Timeframe } from "@pit/shared";
+import { RANK_MINIMUMS, type Timeframe } from "@tapeverify/shared";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { AppDeps } from "../app.js";
-import { argusFor } from "../argus.js";
 import { accountFairSummary, tradeFairFills } from "../fairfill.js";
 import {
   findTrader,
@@ -11,11 +10,12 @@ import {
   scoreMany,
   TIMEFRAMES,
 } from "../traders/service.js";
+import { verifyFor } from "../verify.js";
 
 const RESERVED = new Set([
   "admin",
-  "pit",
-  "argus",
+  "tape",
+  "verify",
   "strike",
   "support",
   "official",
@@ -68,7 +68,7 @@ export function tradersRoutes(app: FastifyInstance, d: AppDeps) {
     },
   );
 
-  // Leaderboard: Pit traders ranked from their own Strike fills. Unqualified traders never rank.
+  // Leaderboard: TapeVerify traders ranked from their own Strike fills. Unqualified traders never rank.
   const cache = new Map<string, { at: number; body: unknown }>();
   app.get(
     "/v1/leaderboard",
@@ -97,23 +97,23 @@ export function tradersRoutes(app: FastifyInstance, d: AppDeps) {
         q.market,
       );
       const all = scored.filter((s) => s.stats.trades > 0);
-      const rep = await argusFor(
+      const rep = await verifyFor(
         d.pool,
         rows.map((r) => r.id),
       );
       const repOf = new Map(rows.map((r) => [`${r.chain}:${r.address}`, rep.get(r.id) ?? null]));
-      const argusOf = (s: ScoredTrader) => repOf.get(`${s.chain}:${s.address}`) ?? null;
+      const verifyOf = (s: ScoredTrader) => repOf.get(`${s.chain}:${s.address}`) ?? null;
       const pick =
         q.sort === "reputation"
-          ? (s: ScoredTrader) => argusOf(s)?.score ?? null
+          ? (s: ScoredTrader) => verifyOf(s)?.score ?? null
           : (SORTS[q.sort] as (s: ScoredTrader) => number | null);
       const ranked = all
         .filter((s) => s.rankedOut === null && (!q.risk || s.risk === q.risk))
         .sort((a, b) => (pick(b) ?? -Infinity) - (pick(a) ?? -Infinity))
-        .map((s, i) => ({ rank: i + 1, ...s, argus: argusOf(s) }));
+        .map((s, i) => ({ rank: i + 1, ...s, verify: verifyOf(s) }));
       const unranked =
         q.includeUnranked === "1"
-          ? all.filter((s) => s.rankedOut !== null).map((s) => ({ ...s, argus: argusOf(s) }))
+          ? all.filter((s) => s.rankedOut !== null).map((s) => ({ ...s, verify: verifyOf(s) }))
           : [];
       const body = {
         timeframe: q.timeframe,
@@ -165,7 +165,7 @@ export function tradersRoutes(app: FastifyInstance, d: AppDeps) {
       trader: { ref: scored.ref, handle: t.handle, chain: t.chain, address: t.address },
       timeframe: q.timeframe,
       market: q.market ?? "all",
-      argus: (await argusFor(d.pool, [t.userId])).get(t.userId) ?? null,
+      verify: (await verifyFor(d.pool, [t.userId])).get(t.userId) ?? null,
       fairFill: await accountFairSummary(d.pool, t.accountId),
       stats: scored.stats,
       volume: scored.volume,
@@ -212,7 +212,7 @@ export function tradersRoutes(app: FastifyInstance, d: AppDeps) {
         notionalFollowed: String(followers.rows[0].volume),
       },
       verification: {
-        source: "Strike fills and deposit/withdrawal history, indexed by Pit",
+        source: "Strike fills and deposit/withdrawal history, indexed by TapeVerify",
         fills: Number(m.fills),
         trades: Number(m.trades),
         capitalFlows: Number(m.flows),

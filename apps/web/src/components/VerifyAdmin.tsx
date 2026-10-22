@@ -13,10 +13,10 @@ interface Item {
   appeal: { id: string; message: string; priorStatus: string } | null;
 }
 
-const BASE = import.meta.env.VITE_PIT_API_URL ?? "http://localhost:3001";
+const BASE = import.meta.env.VITE_TAPE_API_URL ?? "http://localhost:3001";
 
 /** Operator review queue. The token is held in memory only and sent with each request. */
-export function ArgusAdmin() {
+export function VerifyAdmin() {
   const [token, setToken] = useState("");
   const [queue, setQueue] = useState<Item[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -33,7 +33,7 @@ export function ArgusAdmin() {
     return data;
   }
   const load = () =>
-    call("GET", "/v1/admin/argus/queue")
+    call("GET", "/v1/admin/verify/queue")
       .then((r) => {
         setQueue(r.queue);
         setError(null);
@@ -49,7 +49,7 @@ export function ArgusAdmin() {
 
   return (
     <div className="stack">
-      <h1>Argus review queue</h1>
+      <h1>Verify review queue</h1>
       <div className="row">
         <input
           type="password"
@@ -90,7 +90,7 @@ export function ArgusAdmin() {
                 <button
                   type="button"
                   onClick={() =>
-                    act(`/v1/admin/argus/appeals/${i.appeal?.id}/decide`, { accept: true, note })
+                    act(`/v1/admin/verify/appeals/${i.appeal?.id}/decide`, { accept: true, note })
                   }
                 >
                   Accept appeal (clear)
@@ -99,7 +99,7 @@ export function ArgusAdmin() {
                   type="button"
                   className="danger"
                   onClick={() =>
-                    act(`/v1/admin/argus/appeals/${i.appeal?.id}/decide`, { accept: false, note })
+                    act(`/v1/admin/verify/appeals/${i.appeal?.id}/decide`, { accept: false, note })
                   }
                 >
                   Reject appeal (confirm)
@@ -111,7 +111,7 @@ export function ArgusAdmin() {
                   type="button"
                   className="danger"
                   onClick={() =>
-                    act(`/v1/admin/argus/findings/${i.id}/review`, { decision: "confirm", note })
+                    act(`/v1/admin/verify/findings/${i.id}/review`, { decision: "confirm", note })
                   }
                 >
                   Confirm
@@ -119,7 +119,7 @@ export function ArgusAdmin() {
                 <button
                   type="button"
                   onClick={() =>
-                    act(`/v1/admin/argus/findings/${i.id}/review`, { decision: "dismiss", note })
+                    act(`/v1/admin/verify/findings/${i.id}/review`, { decision: "dismiss", note })
                   }
                 >
                   Dismiss

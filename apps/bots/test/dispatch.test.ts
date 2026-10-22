@@ -88,9 +88,11 @@ describe("posting calls to Telegram", () => {
     expect(mine[0]?.body).toMatchObject({
       parse_mode: "HTML",
       reply_markup: {
-        inline_keyboard: [[{ text: "Follow on Pit", url: `https://pit.example/call/${c.code}` }]],
+        inline_keyboard: [
+          [{ text: "Follow on TapeVerify", url: `https://tape.example/call/${c.code}` }],
+        ],
       },
-      link_preview_options: { url: `https://share.pit.example/c/${c.code}` },
+      link_preview_options: { url: `https://share.tape.example/c/${c.code}` },
     });
     expect(mine[0]?.body.text).toContain("LONG BTC-USD 10x by ");
     expect(await row(c.id)).toMatchObject({ status: "sent", attempts: 1 });
@@ -189,20 +191,20 @@ describe("posting calls to X", () => {
   it("posts text that ends with the share link, so X builds the preview card from the page", async () => {
     const u = await trader();
     const c = await call(u);
-    await queue(c.id, await channel(u, "x", "pit"));
+    await queue(c.id, await channel(u, "x", "tape"));
     const x = fakeX();
     await dispatchOutbox(pool, { telegram: null, x: x.client }, URLS, log);
     const mine = x.calls.filter((k) => k.body.text.endsWith(`/c/${c.code}`));
     expect(mine).toHaveLength(1);
     expect(mine[0]).toMatchObject({ url: "https://api.x.com/2/tweets", auth: "Bearer xtoken" });
-    expect(mine[0]?.body.text).toContain(`https://share.pit.example/c/${c.code}`);
+    expect(mine[0]?.body.text).toContain(`https://share.tape.example/c/${c.code}`);
     expect(await row(c.id)).toMatchObject({ status: "sent", external_id: "1900" });
   });
 
   it("fails a post X refuses for good (duplicate or forbidden) instead of retrying forever", async () => {
     const u = await trader();
     const c = await call(u);
-    await queue(c.id, await channel(u, "x", "pit"));
+    await queue(c.id, await channel(u, "x", "tape"));
     const x = fakeX(403, {
       title: "Forbidden",
       detail: "You are not permitted to create a duplicate Tweet.",
@@ -213,7 +215,7 @@ describe("posting calls to X", () => {
   });
 });
 
-describe("a call posted from Pit appears in a Telegram group and can be followed from there", () => {
+describe("a call posted from TapeVerify appears in a Telegram group and can be followed from there", () => {
   it("opens, is queued once, is posted to the group with a follow link, and its result is posted after it closes", async () => {
     const u = await trader();
     const ch = await channel(u, "telegram", "-2001", 60_000); // the group was registered a minute ago
@@ -235,7 +237,7 @@ describe("a call posted from Pit appears in a Telegram group and can be followed
     const posted = sendOnly(t, "-2001");
     expect(posted).toHaveLength(1);
     expect(posted[0]?.body.reply_markup.inline_keyboard[0][0].url).toBe(
-      `https://pit.example/call/${c.code}`,
+      `https://tape.example/call/${c.code}`,
     );
 
     // The call closes: its result is posted to the same group, because the opening was.

@@ -1,5 +1,5 @@
-import { assessSlp, parseSlp, type SlpVault } from "@pit/argus";
-import type { StrikeClient } from "@pit/strike-sdk";
+import type { StrikeClient } from "@tapeverify/strike-sdk";
+import { assessSlp, parseSlp, type SlpVault } from "@tapeverify/verify";
 import type pg from "pg";
 import { errMsg, type Logger } from "../log.js";
 

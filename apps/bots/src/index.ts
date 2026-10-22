@@ -1,4 +1,4 @@
-import { createPool } from "@pit/shared";
+import { createPool } from "@tapeverify/shared";
 import { handleUpdate } from "./bot.js";
 import { dispatchOutbox, type Log } from "./dispatch.js";
 import { TelegramApi } from "./telegram.js";

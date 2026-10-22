@@ -1,4 +1,4 @@
-import { cancelOrder, closePositionOrder } from "@pit/strike-sdk";
+import { cancelOrder, closePositionOrder } from "@tapeverify/strike-sdk";
 import type { AppDeps } from "../app.js";
 
 export interface Closable {
@@ -35,7 +35,7 @@ export async function closeTracked(
           symbol: row.symbol,
           side: exitSide,
           size: row.entry_size ?? row.size,
-          client_order_id: `pit-close-${row.id}`,
+          client_order_id: `tape-close-${row.id}`,
         },
         d.gateway.cfg.builderFeeBps,
       );

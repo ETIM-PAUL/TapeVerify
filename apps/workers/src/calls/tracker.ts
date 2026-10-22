@@ -1,4 +1,4 @@
-import { aggregateFills, compareDecimals, sumSigned } from "@pit/shared";
+import { aggregateFills, compareDecimals, sumSigned } from "@tapeverify/shared";
 import {
   getAccountFills,
   getAccountOrders,
@@ -6,7 +6,7 @@ import {
   type StrikeClient,
   type StrikeFill,
   type StrikeOrder,
-} from "@pit/strike-sdk";
+} from "@tapeverify/strike-sdk";
 import type pg from "pg";
 import { errMsg, type Logger } from "../log.js";
 
@@ -167,8 +167,8 @@ function exitReason(last: StrikeFill, orders: StrikeOrder[], call: TrackedCall):
   if (cid && cid === call.tp_client_order_id) return "tp";
   if (cid && cid === call.sl_client_order_id) return "sl";
   if (cid && cid === call.trail_client_order_id) return "trailing_stop";
-  if (cid?.startsWith("pit-close-") || cid?.startsWith("pitlive-close-")) return "manual";
-  return "external"; // closed outside Pit (e.g. in Strike's own app)
+  if (cid?.startsWith("tape-close-") || cid?.startsWith("tapelive-close-")) return "manual";
+  return "external"; // closed outside TapeVerify (e.g. in Strike's own app)
 }
 
 export class CallTracker {

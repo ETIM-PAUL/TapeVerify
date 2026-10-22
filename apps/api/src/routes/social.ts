@@ -1,10 +1,10 @@
 import { randomBytes } from "node:crypto";
-import { vaultEligibility } from "@pit/shared";
+import { vaultEligibility } from "@tapeverify/shared";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { AppDeps } from "../app.js";
-import { argusFor } from "../argus.js";
 import { findTrader, scoreAccount } from "../traders/service.js";
+import { verifyFor } from "../verify.js";
 
 const MIN = 60_000;
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -175,14 +175,14 @@ export function socialRoutes(app: FastifyInstance, d: AppDeps) {
       .sort((a, b) => b.at - a.at)
       .slice(0, q.limit);
 
-    const rep = await argusFor(d.pool, [...new Set(events.map((e) => e.uid))]);
+    const rep = await verifyFor(d.pool, [...new Set(events.map((e) => e.uid))]);
     return {
       scope: q.scope,
       events: events.map(({ uid, ...e }) => ({
         ...e,
         trader: {
           ...e.trader,
-          argus: rep.get(uid)
+          verify: rep.get(uid)
             ? {
                 clean: rep.get(uid)?.clean,
                 underReview: rep.get(uid)?.underReview,
@@ -327,7 +327,7 @@ export function socialRoutes(app: FastifyInstance, d: AppDeps) {
       channels: ch.rows.map((r) => ({
         id: r.id,
         kind: r.kind,
-        title: r.kind === "x" ? "Pit's X account" : (r.title ?? r.target),
+        title: r.kind === "x" ? "TapeVerify's X account" : (r.title ?? r.target),
         active: r.active,
       })),
     };
@@ -359,7 +359,7 @@ export function socialRoutes(app: FastifyInstance, d: AppDeps) {
         .code(503)
         .send({ error: "Posting to X isn't set up on this server", code: "not_configured" });
     await d.pool.query(
-      `INSERT INTO post_channels (user_id, kind, target, title) VALUES ($1,'x','pit','Pit''s X account')
+      `INSERT INTO post_channels (user_id, kind, target, title) VALUES ($1,'x','tape','TapeVerify''s X account')
        ON CONFLICT (user_id, kind, target) DO UPDATE SET active = true, created_at = CASE WHEN post_channels.active THEN post_channels.created_at ELSE now() END`,
       [req.user!.id],
     );
@@ -376,7 +376,7 @@ export function socialRoutes(app: FastifyInstance, d: AppDeps) {
     return { ok: true };
   });
 
-  // ── Vault graduation: a guided hand-off. Strike's app creates the vault; Pit says who has earned it. ──
+  // ── Vault graduation: a guided hand-off. Strike's app creates the vault; TapeVerify says who has earned it. ──
 
   async function vaultState(meId: string) {
     const me = { id: meId };
@@ -406,7 +406,7 @@ export function socialRoutes(app: FastifyInstance, d: AppDeps) {
         },
         "all",
       );
-      const rep = (await argusFor(d.pool, [me.id])).get(me.id);
+      const rep = (await verifyFor(d.pool, [me.id])).get(me.id);
       eligibility = vaultEligibility({
         trades: scored.stats.trades,
         activeDays: scored.stats.activeDays,
@@ -453,7 +453,7 @@ export function socialRoutes(app: FastifyInstance, d: AppDeps) {
         "You choose your commission (up to 50%) and keep at least 5% of the shares.",
         "Once it's live, it appears here automatically with its stats.",
       ],
-      note: "Strike has no API to create a vault for someone else, so Pit can only point eligible traders to it.",
+      note: "Strike has no API to create a vault for someone else, so TapeVerify can only point eligible traders to it.",
     };
   }
 

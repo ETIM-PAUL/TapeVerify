@@ -1,4 +1,4 @@
-import { signingKeyFromSeed } from "@pit/argus";
+import { signingKeyFromSeed } from "@tapeverify/verify";
 import { z } from "zod";
 
 const schema = z.object({
@@ -15,12 +15,12 @@ const schema = z.object({
   ADMIN_TOKEN: z.string().min(16).optional(),
   /** Closed live trades (with the exact rules) a strategy needs before it can be listed. */
   MARKETPLACE_MIN_LIVE_TRADES: z.coerce.number().int().min(0).default(3),
-  /** Creator's share of Pit's builder fee on clones' trades, in bps of that fee. */
+  /** Creator's share of TapeVerify's builder fee on clones' trades, in bps of that fee. */
   CREATOR_SHARE_BPS: z.coerce.number().int().min(0).max(10_000).default(5000),
   /** Origin of the share links (/c/<code>, /og/<code>.png). Same domain as the web app behind a proxy in production. */
   PUBLIC_SHARE_URL: z.string().default("http://localhost:3001"),
-  /** Salt for the hashed sign-in addresses Argus compares. Set a long random value in production. */
-  ARGUS_SALT: z.string().min(8).default("pit-dev-argus-salt"),
+  /** Salt for the hashed sign-in addresses the trust checks compare. Set a long random value in production. */
+  VERIFY_SALT: z.string().min(8).default("tape-dev-verify-salt"),
   /** Trust X-Forwarded-For (only behind a proxy you control), so sign-ins record the real client address. */
   /** Public key (hex) that signs trader records. Derived from RECORD_SIGNING_SEED if that is set here instead. */
   RECORD_PUBLIC_KEY: z
@@ -35,7 +35,7 @@ const schema = z.object({
     .string()
     .regex(/^\w{3,64}$/)
     .optional(),
-  /** Whether Pit's X account is set up to post (the token itself lives with the bots service). */
+  /** Whether TapeVerify's X account is set up to post (the token itself lives with the bots service). */
   X_POSTING: z.enum(["true", "false"]).default("false"),
   TRUST_PROXY: z.enum(["true", "false"]).default("false"),
 });
@@ -53,7 +53,7 @@ export interface ApiConfig {
   adminToken: string | undefined;
   marketMinLiveTrades: number;
   creatorShareBps: number;
-  argusSalt: string;
+  verifySalt: string;
   telegramBot: string | null;
   xPosting: boolean;
   recordPublicKey: string | null;
@@ -76,7 +76,7 @@ export function loadApiConfig(env: Record<string, string | undefined> = process.
     adminToken: e.ADMIN_TOKEN,
     marketMinLiveTrades: e.MARKETPLACE_MIN_LIVE_TRADES,
     creatorShareBps: e.CREATOR_SHARE_BPS,
-    argusSalt: e.ARGUS_SALT,
+    verifySalt: e.VERIFY_SALT,
     telegramBot: e.TELEGRAM_BOT_USERNAME ?? null,
     xPosting: e.X_POSTING === "true",
     recordPublicKey:

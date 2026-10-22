@@ -7,8 +7,8 @@ import {
   specHash,
   strategySpecSchema,
   validateStrategy,
-} from "@pit/shared";
-import { getAccountPositions, getSubAccounts } from "@pit/strike-sdk";
+} from "@tapeverify/shared";
+import { getAccountPositions, getSubAccounts } from "@tapeverify/strike-sdk";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { AppDeps } from "../app.js";

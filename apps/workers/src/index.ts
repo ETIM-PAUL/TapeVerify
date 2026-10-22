@@ -4,13 +4,8 @@ import {
   LocalKekProvider,
   loadStrikeConfig,
   StrikeGateway,
-} from "@pit/shared";
-import { getMarketSymbols, StrikeClient } from "@pit/strike-sdk";
-import { scoreFills } from "./argus/fairfill.js";
-import { healthTick } from "./argus/health.js";
-import { ArgusJob, Every } from "./argus/job.js";
-import { checkLiquidations } from "./argus/liquidation.js";
-import { recordsEnv, runRecords } from "./argus/records.js";
+} from "@tapeverify/shared";
+import { getMarketSymbols, StrikeClient } from "@tapeverify/strike-sdk";
 import { CallTracker } from "./calls/tracker.js";
 import { loadWorkerConfig } from "./config.js";
 import { FillsIngester } from "./fills/ingest.js";
@@ -25,6 +20,11 @@ import { PriceRecorder } from "./market/streams.js";
 import { PaperRunner } from "./paper/runner.js";
 import { runRetention } from "./retention.js";
 import { fanOut } from "./social/notify.js";
+import { scoreFills } from "./verify/fairfill.js";
+import { healthTick } from "./verify/health.js";
+import { Every, VerifyJob } from "./verify/job.js";
+import { checkLiquidations } from "./verify/liquidation.js";
+import { recordsEnv, runRecords } from "./verify/records.js";
 
 const log = createLogger("indexer");
 const cfg = loadWorkerConfig();
@@ -54,10 +54,10 @@ const depth = new DepthPoller(client, pool, cfg, symbols, log.child("depth"));
 const fills = new FillsIngester(client, pool, cfg, log.child("fills"));
 const calls = new CallTracker(client, pool, log.child("calls"));
 const earnings = new EarningsJob(pool, log.child("earnings"));
-const argus = new ArgusJob(
+const verify = new VerifyJob(
   pool,
-  log.child("argus"),
-  Number(process.env.ARGUS_INTERVAL_SECONDS || 300) * 1000,
+  log.child("verify"),
+  Number(process.env.VERIFY_INTERVAL_SECONDS || 300) * 1000,
 );
 const recEnv = recordsEnv(process.env, strike.network);
 const trustJobs = [
@@ -123,7 +123,7 @@ depth.start();
 fills.start();
 calls.start();
 earnings.start();
-argus.start();
+verify.start();
 for (const j of trustJobs) j.start();
 paper.start();
 live?.start();
@@ -152,7 +152,7 @@ async function shutdown(signal: string) {
   fills.stop();
   calls.stop();
   earnings.stop();
-  argus.stop();
+  verify.stop();
   for (const j of trustJobs) j.stop();
   paper.stop();
   live?.stop();

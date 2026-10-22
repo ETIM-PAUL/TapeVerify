@@ -1,4 +1,4 @@
-import { instantiateTemplate } from "@pit/shared";
+import { instantiateTemplate } from "@tapeverify/shared";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { makeApp, signIn, solAddress, type TestApp } from "./helpers.js";
 

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { generateSigningKey, sealBatch, takeSnapshots } from "@pit/argus";
+import { generateSigningKey, sealBatch, takeSnapshots } from "@tapeverify/verify";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { makeApp, marketsBody, signIn, solAddress, type TestApp } from "./helpers.js";
 

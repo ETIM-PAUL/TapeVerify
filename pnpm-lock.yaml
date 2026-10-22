@@ -193,21 +193,21 @@ importers:
       '@fastify/rate-limit':
         specifier: ^11.2.1
         version: 11.2.1
-      '@pit/argus':
-        specifier: workspace:*
-        version: link:../../packages/argus
-      '@pit/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
-      '@pit/strike-sdk':
-        specifier: workspace:*
-        version: link:../../packages/strike-sdk
       '@resvg/resvg-js':
         specifier: ^2.6.2
         version: 2.6.2
       '@scure/base':
         specifier: ^2.4.0
         version: 2.4.0
+      '@tapeverify/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
+      '@tapeverify/strike-sdk':
+        specifier: workspace:*
+        version: link:../../packages/strike-sdk
+      '@tapeverify/verify':
+        specifier: workspace:*
+        version: link:../../packages/verify
       fastify:
         specifier: ^5.12.7
         version: 5.12.7
@@ -233,7 +233,7 @@ importers:
 
   apps/bots:
     dependencies:
-      '@pit/shared':
+      '@tapeverify/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       pg:
@@ -280,15 +280,15 @@ importers:
 
   apps/workers:
     dependencies:
-      '@pit/argus':
-        specifier: workspace:*
-        version: link:../../packages/argus
-      '@pit/shared':
+      '@tapeverify/shared':
         specifier: workspace:*
         version: link:../../packages/shared
-      '@pit/strike-sdk':
+      '@tapeverify/strike-sdk':
         specifier: workspace:*
         version: link:../../packages/strike-sdk
+      '@tapeverify/verify':
+        specifier: workspace:*
+        version: link:../../packages/verify
       pg:
         specifier: ^8.23.1
         version: 8.23.1
@@ -309,22 +309,9 @@ importers:
         specifier: ^4.23.15
         version: 4.23.15
 
-  packages/argus:
-    dependencies:
-      '@pit/shared':
-        specifier: workspace:*
-        version: link:../shared
-      pg:
-        specifier: ^8.23.1
-        version: 8.23.1
-    devDependencies:
-      '@types/pg':
-        specifier: ^8.23.1
-        version: 8.23.1
-
   packages/shared:
     dependencies:
-      '@pit/strike-sdk':
+      '@tapeverify/strike-sdk':
         specifier: workspace:*
         version: link:../strike-sdk
       pg:
@@ -356,6 +343,19 @@ importers:
       bs58:
         specifier: ^6.0.0
         version: 6.0.0
+
+  packages/verify:
+    dependencies:
+      '@tapeverify/shared':
+        specifier: workspace:*
+        version: link:../shared
+      pg:
+        specifier: ^8.23.1
+        version: 8.23.1
+    devDependencies:
+      '@types/pg':
+        specifier: ^8.23.1
+        version: 8.23.1
 
 packages:
 

@@ -1,5 +1,5 @@
-import { initialState, instantiateTemplate, type StrategySpec } from "@pit/shared";
-import { StrikeClient } from "@pit/strike-sdk";
+import { initialState, instantiateTemplate, type StrategySpec } from "@tapeverify/shared";
+import { StrikeClient } from "@tapeverify/strike-sdk";
 import type pg from "pg";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { silentLogger } from "../src/log.js";

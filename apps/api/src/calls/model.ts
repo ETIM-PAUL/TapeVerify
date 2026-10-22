@@ -1,4 +1,4 @@
-import type { CallStatus, ExitReason } from "@pit/shared";
+import type { CallStatus, ExitReason } from "@tapeverify/shared";
 import type pg from "pg";
 
 /** Row shape of `calls` (pg returns numerics and bigints as strings). */

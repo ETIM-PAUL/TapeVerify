@@ -1,6 +1,6 @@
 /**
  * Ingest one Strike account's records, rebuild its trades and print its verified stats.
- *   pnpm --filter @pit/workers stats -- --account <strike account id> [--timeframe all|30d|7d|24h] [--market BTC-USD]
+ *   pnpm --filter @tapeverify/workers stats -- --account <strike account id> [--timeframe all|30d|7d|24h] [--market BTC-USD]
  * Works for any account (history is public by account id), so numbers can be compared with other sources.
  */
 import {
@@ -12,8 +12,8 @@ import {
   riskLevel,
   TIMEFRAME_MS,
   type Timeframe,
-} from "@pit/shared";
-import { StrikeClient } from "@pit/strike-sdk";
+} from "@tapeverify/shared";
+import { StrikeClient } from "@tapeverify/strike-sdk";
 import { loadWorkerConfig } from "../config.js";
 import { FillsIngester } from "../fills/ingest.js";
 import { createLogger } from "../log.js";

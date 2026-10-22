@@ -1,4 +1,4 @@
-import { recomputeReputation } from "@pit/argus";
+import { recomputeReputation } from "@tapeverify/verify";
 import { describe, expect, it } from "vitest";
 import { makeApp, marketsBody, signIn, solAddress, type TestApp } from "./helpers.js";
 
@@ -39,7 +39,7 @@ async function world() {
 
 async function flag(t: TestApp, userId: string, severity = "high", kind = "front_running") {
   const r = await t.pool.query(
-    `INSERT INTO argus_findings (subject_id, kind, severity, base_key, generation, summary, evidence)
+    `INSERT INTO verify_findings (subject_id, kind, severity, base_key, generation, summary, evidence)
      VALUES ($1,$2,$3,$4,0,'Exited shortly after several followers entered.', '{"secret":"other-account"}') RETURNING id`,
     [userId, kind, severity, `test:${crypto.randomUUID()}`],
   );
@@ -76,7 +76,7 @@ describe("what followers and the public see", () => {
     await t.app.inject({
       method: "POST",
       url: "/v1/me/handle",
-      payload: { handle: `argus${Date.now() % 100000}` },
+      payload: { handle: `verify${Date.now() % 100000}` },
       headers: { cookie: trader.cookie },
     });
     await flag(t, trader.user.id);
@@ -84,13 +84,13 @@ describe("what followers and the public see", () => {
 
     const prof = await t.app.inject({ method: "GET", url: `/v1/traders/${me.rows[0].handle}` });
     expect(prof.statusCode, prof.body).toBe(200);
-    const a = prof.json().argus;
+    const a = prof.json().verify;
     expect(a).toMatchObject({ clean: false, underReview: true, worst: "high" });
     expect(a.penalties[0]).toMatchObject({ kind: "front_running", status: "open" });
     expect(prof.body).not.toContain("other-account");
 
     const page = await t.app.inject({ method: "GET", url: `/v1/calls/${call.code}` });
-    expect(page.json().argus.underReview).toBe(true);
+    expect(page.json().verify.underReview).toBe(true);
     expect(page.body).not.toContain("other-account");
     await t.close();
   });
@@ -121,9 +121,9 @@ describe("following a flagged caller", () => {
     const id = await flag(t, trader.user.id, "low", "self_trade");
     const f1 = await signIn(t, "solana", solAddress());
     expect((await follow(t, f1.cookie, call.code)).statusCode).toBe(201);
-    await t.pool.query("UPDATE argus_findings SET status = 'dismissed' WHERE id = $1", [id]);
+    await t.pool.query("UPDATE verify_findings SET status = 'dismissed' WHERE id = $1", [id]);
     await flag(t, trader.user.id, "high", "sybil_cluster");
-    await t.pool.query("UPDATE argus_findings SET status = 'dismissed' WHERE subject_id = $1", [
+    await t.pool.query("UPDATE verify_findings SET status = 'dismissed' WHERE subject_id = $1", [
       trader.user.id,
     ]);
     const f2 = await signIn(t, "solana", solAddress());
@@ -145,12 +145,12 @@ describe("appeals and review", () => {
     );
     const hdr = { cookie: trader.cookie };
 
-    const mine = await t.app.inject({ method: "GET", url: "/v1/me/argus", headers: hdr });
+    const mine = await t.app.inject({ method: "GET", url: "/v1/me/verify", headers: hdr });
     expect(mine.json().findings[0]).toMatchObject({ id, status: "open", canAppeal: true });
 
     const short = await t.app.inject({
       method: "POST",
-      url: `/v1/argus/findings/${id}/appeal`,
+      url: `/v1/verify/findings/${id}/appeal`,
       payload: { message: "no" },
       headers: hdr,
     });
@@ -158,7 +158,7 @@ describe("appeals and review", () => {
     const stranger = await signIn(t, "solana", solAddress());
     const notMine = await t.app.inject({
       method: "POST",
-      url: `/v1/argus/findings/${id}/appeal`,
+      url: `/v1/verify/findings/${id}/appeal`,
       payload: { message: "this is not mine at all" },
       headers: { cookie: stranger.cookie },
     });
@@ -166,33 +166,33 @@ describe("appeals and review", () => {
 
     const a = await t.app.inject({
       method: "POST",
-      url: `/v1/argus/findings/${id}/appeal`,
+      url: `/v1/verify/findings/${id}/appeal`,
       payload: { message: "I exited on a stop I set earlier, see the call page." },
       headers: hdr,
     });
     expect(a.statusCode, a.body).toBe(201);
     const again = await t.app.inject({
       method: "POST",
-      url: `/v1/argus/findings/${id}/appeal`,
+      url: `/v1/verify/findings/${id}/appeal`,
       payload: { message: "trying a second time please" },
       headers: hdr,
     });
     expect(again.statusCode).toBe(409);
 
     // The queue shows the appeal first, with the reviewer-only evidence.
-    const q = await t.app.inject({ method: "GET", url: "/v1/admin/argus/queue", headers: admin });
+    const q = await t.app.inject({ method: "GET", url: "/v1/admin/verify/queue", headers: admin });
     const item = q.json().queue.find((x: { id: string }) => x.id === id);
     expect(item).toMatchObject({ status: "appealed", appeal: { priorStatus: "open" } });
     expect(item.evidence.secret).toBe("other-account");
 
     const decided = await t.app.inject({
       method: "POST",
-      url: `/v1/admin/argus/appeals/${item.appeal.id}/decide`,
+      url: `/v1/admin/verify/appeals/${item.appeal.id}/decide`,
       payload: { accept: true, note: "Stop order confirmed." },
       headers: admin,
     });
     expect(decided.statusCode, decided.body).toBe(200);
-    const after = (await t.pool.query("SELECT status FROM argus_findings WHERE id = $1", [id]))
+    const after = (await t.pool.query("SELECT status FROM verify_findings WHERE id = $1", [id]))
       .rows[0];
     expect(after.status).toBe("cleared");
     const rep = (
@@ -200,7 +200,7 @@ describe("appeals and review", () => {
     ).rows[0];
     expect(Number(rep.score)).toBeGreaterThan(hit);
     const trail = await t.pool.query(
-      "SELECT actor, to_status FROM argus_events WHERE finding_id = $1 ORDER BY id",
+      "SELECT actor, to_status FROM verify_events WHERE finding_id = $1 ORDER BY id",
       [id],
     );
     expect(trail.rows.map((r) => r.to_status)).toEqual(["appealed", "cleared"]);
@@ -212,25 +212,25 @@ describe("appeals and review", () => {
     const id = await flag(t, trader.user.id, "critical");
     await t.app.inject({
       method: "POST",
-      url: `/v1/argus/findings/${id}/appeal`,
+      url: `/v1/verify/findings/${id}/appeal`,
       payload: { message: "This was a coincidence, I swear." },
       headers: { cookie: trader.cookie },
     });
-    const q = await t.app.inject({ method: "GET", url: "/v1/admin/argus/queue", headers: admin });
+    const q = await t.app.inject({ method: "GET", url: "/v1/admin/verify/queue", headers: admin });
     const item = q.json().queue.find((x: { id: string }) => x.id === id);
     const r = await t.app.inject({
       method: "POST",
-      url: `/v1/admin/argus/appeals/${item.appeal.id}/decide`,
+      url: `/v1/admin/verify/appeals/${item.appeal.id}/decide`,
       payload: { accept: false },
       headers: admin,
     });
     expect(r.statusCode).toBe(200);
     expect(
-      (await t.pool.query("SELECT status FROM argus_findings WHERE id = $1", [id])).rows[0].status,
+      (await t.pool.query("SELECT status FROM verify_findings WHERE id = $1", [id])).rows[0].status,
     ).toBe("confirmed");
     const mine = await t.app.inject({
       method: "GET",
-      url: "/v1/me/argus",
+      url: "/v1/me/verify",
       headers: { cookie: trader.cookie },
     });
     expect(mine.json().findings[0]).toMatchObject({
@@ -246,14 +246,14 @@ describe("appeals and review", () => {
     const id = await flag(t, trader.user.id, "medium");
     const dismiss = await t.app.inject({
       method: "POST",
-      url: `/v1/admin/argus/findings/${id}/review`,
+      url: `/v1/admin/verify/findings/${id}/review`,
       payload: { decision: "dismiss", note: "Normal behaviour." },
       headers: admin,
     });
     expect(dismiss.statusCode, dismiss.body).toBe(200);
     const twice = await t.app.inject({
       method: "POST",
-      url: `/v1/admin/argus/findings/${id}/review`,
+      url: `/v1/admin/verify/findings/${id}/review`,
       payload: { decision: "confirm" },
       headers: admin,
     });
@@ -265,8 +265,8 @@ describe("appeals and review", () => {
     const { t, trader } = await world();
     const id = await flag(t, trader.user.id);
     for (const [method, url, payload] of [
-      ["GET", "/v1/admin/argus/queue", undefined],
-      ["POST", `/v1/admin/argus/findings/${id}/review`, { decision: "dismiss" }],
+      ["GET", "/v1/admin/verify/queue", undefined],
+      ["POST", `/v1/admin/verify/findings/${id}/review`, { decision: "dismiss" }],
     ] as const) {
       const none = await t.app.inject({ method, url, payload });
       expect(none.statusCode).toBe(401);

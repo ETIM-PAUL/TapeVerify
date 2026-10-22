@@ -1,6 +1,6 @@
-/** Live Strike testnet: read-only public data. Run with `pnpm --filter @pit/workers test:live`. */
-import { loadStrikeConfig, sameBook } from "@pit/shared";
-import { getL3Snapshot, getMarketSymbols, StrikeClient } from "@pit/strike-sdk";
+/** Live Strike testnet: read-only public data. Run with `pnpm --filter @tapeverify/workers test:live`. */
+import { loadStrikeConfig, sameBook } from "@tapeverify/shared";
+import { getL3Snapshot, getMarketSymbols, StrikeClient } from "@tapeverify/strike-sdk";
 import type pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { loadWorkerConfig } from "../src/config.js";
@@ -113,7 +113,7 @@ describe("Strike testnet call lifecycle (unfunded wallet)", () => {
       placeStrategyOrder,
       requestBuilderSignature,
       verifyBuilderSignature,
-    } = await import("@pit/strike-sdk");
+    } = await import("@tapeverify/strike-sdk");
     const ed = await import("@noble/ed25519");
     const { base58 } = await import("@scure/base");
 
@@ -129,7 +129,7 @@ describe("Strike testnet call lifecycle (unfunded wallet)", () => {
       address: base58.encode(ed.getPublicKey(priv)),
       chain: "solana",
       publicKey: keys.publicKey,
-      builderCode: "Pit",
+      builderCode: "TapeVerify",
       feeShareBps: 10,
     });
     const acct = await verifyBuilderSignature(anon, {
@@ -159,14 +159,14 @@ describe("Strike testnet call lifecycle (unfunded wallet)", () => {
         Math.round(mark * 0.95),
         Date.now() + 3_600_000,
         strategyId,
-        `pit-${callId}`,
+        `tape-${callId}`,
       ],
     );
     await placeStrategyOrder(
       trader,
       {
         strategy_id: strategyId,
-        client_order_id: `pit-${callId}`,
+        client_order_id: `tape-${callId}`,
         symbol: "BTC-USD",
         side: "buy",
         type: "market",
@@ -214,10 +214,10 @@ describe("Strike testnet call lifecycle (unfunded wallet)", () => {
 describe("Strike testnet live runner (unfunded wallet)", () => {
   it("signs and places a real bracket order, Strike rejects it, and the runner records exactly why", async () => {
     const { KeyVault, LocalKekProvider, StrikeGateway, instantiateTemplate } = await import(
-      "@pit/shared"
+      "@tapeverify/shared"
     );
     const { generateApiWalletKeys, requestBuilderSignature, verifyBuilderSignature } = await import(
-      "@pit/strike-sdk"
+      "@tapeverify/strike-sdk"
     );
     const { LiveRunner } = await import("../src/live/runner.js");
     const ed = await import("@noble/ed25519");
@@ -237,7 +237,7 @@ describe("Strike testnet live runner (unfunded wallet)", () => {
       address: base58.encode(ed.getPublicKey(priv)),
       chain: "solana",
       publicKey: keys.publicKey,
-      builderCode: "Pit",
+      builderCode: "TapeVerify",
       feeShareBps: 10,
     });
     const acct = await verifyBuilderSignature(anon, {

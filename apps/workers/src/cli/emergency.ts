@@ -1,10 +1,10 @@
 /**
  * Operator kill switch for all live trading.
- *   pnpm --filter @pit/workers emergency -- on      halt every live run (positions are flattened) and block new ones
- *   pnpm --filter @pit/workers emergency -- off     allow live trading again
- *   pnpm --filter @pit/workers emergency -- status
+ *   pnpm --filter @tapeverify/workers emergency -- on      halt every live run (positions are flattened) and block new ones
+ *   pnpm --filter @tapeverify/workers emergency -- off     allow live trading again
+ *   pnpm --filter @tapeverify/workers emergency -- status
  */
-import { createPool } from "@pit/shared";
+import { createPool } from "@tapeverify/shared";
 
 const cmd = process.argv.find((a) => a === "on" || a === "off" || a === "status");
 if (!cmd) {

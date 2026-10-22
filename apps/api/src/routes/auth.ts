@@ -1,16 +1,16 @@
 import { randomUUID } from "node:crypto";
-import type { SealedSecret } from "@pit/shared";
+import type { SealedSecret } from "@tapeverify/shared";
 import {
   generateApiWalletKeys,
   requestBuilderSignature,
   verifyBuilderSignature,
-} from "@pit/strike-sdk";
+} from "@tapeverify/strike-sdk";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { normalizeAddress } from "../addresses.js";
 import type { AppDeps } from "../app.js";
-import { recordLogin } from "../argus.js";
 import { createSession, deleteSession } from "../sessions.js";
+import { recordLogin } from "../verify.js";
 
 const CHALLENGE_TTL_MS = 5 * 60_000;
 
@@ -131,10 +131,10 @@ export function authRoutes(app: FastifyInstance, d: AppDeps) {
       await client.query("COMMIT");
 
       const session = await createSession(d.pool, user.id, d.api.sessionTtlMs);
-      await recordLogin(d.pool, d.api.argusSalt, user.id, req.ip, req.headers["user-agent"]).catch(
+      await recordLogin(d.pool, d.api.verifySalt, user.id, req.ip, req.headers["user-agent"]).catch(
         () => {},
       );
-      reply.setCookie("pit_session", session.token, {
+      reply.setCookie("tape_session", session.token, {
         httpOnly: true,
         sameSite: "lax",
         secure: d.api.secureCookies,
@@ -151,9 +151,9 @@ export function authRoutes(app: FastifyInstance, d: AppDeps) {
   });
 
   app.post("/v1/auth/logout", async (req, reply) => {
-    const token = req.cookies.pit_session;
+    const token = req.cookies.tape_session;
     if (token) await deleteSession(d.pool, token);
-    reply.clearCookie("pit_session", { path: "/" });
+    reply.clearCookie("tape_session", { path: "/" });
     return { ok: true };
   });
 

@@ -1,20 +1,20 @@
 import { randomBytes, randomUUID } from "node:crypto";
-import { type MarketRulesLite, validateCallOrder } from "@pit/shared";
+import { type MarketRulesLite, validateCallOrder } from "@tapeverify/shared";
 import {
   getAccount,
   getAccountPositions,
   placeStrategyOrder,
   StrikeApiError,
   setLeverage,
-} from "@pit/strike-sdk";
+} from "@tapeverify/strike-sdk";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { AppDeps } from "../app.js";
-import { argusFor } from "../argus.js";
 import { closeTracked } from "../calls/close.js";
 import { hasUnfinished, liveView, traderStats } from "../calls/live.js";
 import { type CallRow, callWithTrader, followView, publicCall, shortCode } from "../calls/model.js";
 import { followerFillQuality } from "../fairfill.js";
+import { verifyFor } from "../verify.js";
 
 const decimal = z
   .string()
@@ -127,7 +127,7 @@ export function callsRoutes(app: FastifyInstance, d: AppDeps) {
             Date.now() + body.expiryMinutes * 60_000,
             body.maxDriftBps,
             randomUUID(),
-            `pit-${id}`,
+            `tape-${id}`,
           ],
         );
         code = candidate;
@@ -263,7 +263,7 @@ export function callsRoutes(app: FastifyInstance, d: AppDeps) {
       call: view(row),
       live: mark ? liveView(row, mark) : null,
       stats: await traderStats(d.pool, row.user_id),
-      argus: (await argusFor(d.pool, [row.user_id])).get(row.user_id) ?? null,
+      verify: (await verifyFor(d.pool, [row.user_id])).get(row.user_id) ?? null,
       followerFills: await followerFillQuality(d.pool, row.user_id),
       viewer: viewer ? { isOwner: viewer.id === row.user_id, follow: myFollow } : null,
     };

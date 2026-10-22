@@ -1,4 +1,4 @@
-import { createPool, runMigrations } from "@pit/shared";
+import { createPool, runMigrations } from "@tapeverify/shared";
 
 const pool = createPool();
 try {

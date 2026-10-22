@@ -174,7 +174,7 @@ describe("the feed", () => {
     const e = (await get("/v1/feed?scope=all&limit=50"))
       .json()
       .events.find((x: { trader: { name: string } }) => x.trader.name === u.handle);
-    expect(e.trader.argus).toMatchObject({ clean: true, score: 81 });
+    expect(e.trader.verify).toMatchObject({ clean: true, score: 81 });
   });
 });
 

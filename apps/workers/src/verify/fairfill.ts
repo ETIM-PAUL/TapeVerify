@@ -4,7 +4,7 @@ import {
   type Side,
   scoreAgainstBook,
   scoreAgainstPrice,
-} from "@pit/argus";
+} from "@tapeverify/verify";
 import type pg from "pg";
 import { rebuildBookBefore } from "../l3/rebuild.js";
 import { errMsg, type Logger } from "../log.js";

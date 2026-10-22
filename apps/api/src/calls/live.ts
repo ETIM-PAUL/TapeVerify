@@ -1,4 +1,4 @@
-import { driftBps, type Followability, followability } from "@pit/shared";
+import { driftBps, type Followability, followability } from "@tapeverify/shared";
 import type pg from "pg";
 import type { CallRow } from "./model.js";
 
@@ -52,7 +52,7 @@ export interface TraderStats {
   followers: number;
 }
 
-/** Headline numbers from this trader's Pit calls (all derived from Strike fills). Phase 7 builds full verified stats. */
+/** Headline numbers from this trader's TapeVerify calls (all derived from Strike fills). Phase 7 builds full verified stats. */
 export async function traderStats(pool: pg.Pool, userId: string): Promise<TraderStats> {
   const { rows } = await pool.query(
     `SELECT count(*) FILTER (WHERE status IN ('open', 'expired', 'closed')) AS calls,
