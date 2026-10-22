@@ -25,6 +25,8 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 export const api = {
   get: <T>(p: string) => request<T>("GET", p),
   post: <T>(p: string, b: unknown = {}) => request<T>("POST", p, b),
+  put: <T>(p: string, b: unknown = {}) => request<T>("PUT", p, b),
+  del: <T>(p: string) => request<T>("DELETE", p),
 };
 
 export type Chain = "cardano" | "ethereum" | "solana";
@@ -202,4 +204,51 @@ export interface Profile {
     lastFillAt: number | null;
     method: Record<string, string>;
   };
+}
+
+export interface Issue {
+  path: string;
+  message: string;
+}
+export interface RuleLine {
+  label: string;
+  text: string;
+}
+export interface Description {
+  headline: string;
+  lines: RuleLine[];
+}
+// biome-ignore lint/suspicious/noExplicitAny: the strategy spec is edited as JSON; the server validates it
+export type SpecJson = any;
+export interface DraftOut {
+  spec: SpecJson;
+  assumptions: string[];
+  description: Description;
+  warnings: Issue[];
+  attempts: number;
+}
+export interface TemplateOut {
+  id: string;
+  title: string;
+  blurb: string;
+  needsFundingHistory: boolean;
+  spec: SpecJson;
+  description: Description;
+  warnings: Issue[];
+}
+export interface SavedStrategy {
+  id: string;
+  name: string;
+  source: string;
+  status: string;
+  market: string;
+  timeframe: string;
+  direction: string;
+  updatedAt: number;
+}
+export interface ValidateOut {
+  ok: boolean;
+  issues: Issue[];
+  warnings: Issue[];
+  description: Description | null;
 }

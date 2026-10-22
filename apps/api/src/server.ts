@@ -1,4 +1,5 @@
 import { createPool, KeyVault, LocalKekProvider, loadStrikeConfig } from "@pit/shared";
+import { createDrafter, loadAiConfig } from "./ai/translate.js";
 import { buildApp } from "./app.js";
 import { loadApiConfig } from "./config.js";
 import { StrikeGateway } from "./gateway.js";
@@ -7,8 +8,15 @@ const api = loadApiConfig();
 const strike = loadStrikeConfig();
 const pool = createPool();
 const vault = new KeyVault(LocalKekProvider.fromEnv());
+const aiConfig = loadAiConfig();
 const app = await buildApp(
-  { pool, vault, api, gateway: new StrikeGateway(pool, vault, strike) },
+  {
+    pool,
+    vault,
+    api,
+    gateway: new StrikeGateway(pool, vault, strike),
+    draft: aiConfig ? createDrafter(aiConfig) : null,
+  },
   true,
 );
 await app.listen({ port: api.port, host: "0.0.0.0" });

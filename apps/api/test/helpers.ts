@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { KeyVault, LocalKekProvider, loadStrikeConfig } from "@pit/shared";
 import { base58, bech32 } from "@scure/base";
 import pg from "pg";
+import type { DraftFn } from "../src/ai/translate.js";
 import { buildApp } from "../src/app.js";
 import { loadApiConfig } from "../src/config.js";
 import { StrikeGateway } from "../src/gateway.js";
@@ -129,7 +130,11 @@ export function fakeStrike(overrides: Record<string, Handler> = {}) {
   return { fetchImpl, calls };
 }
 
-export async function makeApp(overrides: Record<string, Handler> = {}, rateLimit = false) {
+export async function makeApp(
+  overrides: Record<string, Handler> = {},
+  rateLimit = false,
+  draft: DraftFn | null = null,
+) {
   const pool = new pg.Pool({ connectionString: process.env.TEST_DATABASE_URL });
   const vault = new KeyVault(new LocalKekProvider("t1", { t1: randomBytes(32) }));
   const strike = fakeStrike(overrides);
@@ -143,6 +148,7 @@ export async function makeApp(overrides: Record<string, Handler> = {}, rateLimit
     pool,
     vault,
     gateway,
+    draft,
     api: loadApiConfig({ RATE_LIMIT: rateLimit ? "on" : "off" }),
   });
   return {

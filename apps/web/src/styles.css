@@ -257,3 +257,34 @@ a {
   display: block;
   overflow-x: auto;
 }
+textarea {
+  font: inherit;
+  color: inherit;
+  background: #1b2128;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+  width: 100%;
+  resize: vertical;
+}
+textarea.code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+}
+.formgrid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  margin-bottom: 12px;
+}
+.formgrid label {
+  color: var(--muted);
+  font-size: 13px;
+}
+.nowrap {
+  white-space: nowrap;
+  vertical-align: top;
+}
+details {
+  margin: 12px 0;
+}

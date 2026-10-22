@@ -6,6 +6,7 @@ import { Connect } from "./components/Connect";
 import { Leaderboard } from "./components/Leaderboard";
 import { NavBar } from "./components/NavBar";
 import { Profile } from "./components/Profile";
+import { Studio } from "./components/Studio";
 import { type ActiveWallet, WalletContext } from "./wallet-context";
 
 export function App() {
@@ -31,7 +32,8 @@ export function App() {
   const callCode = path.match(/^\/call\/([A-Za-z0-9]+)$/)?.[1];
   const traderRef = path.match(/^\/t\/([A-Za-z0-9_-]+)$/)?.[1];
   const isBoard = path === "/leaderboard";
-  const publicPage = Boolean(callCode || traderRef || isBoard);
+  const isStudio = path === "/studio";
+  const publicPage = Boolean(callCode || traderRef || isBoard || isStudio);
   if (!ready && !publicPage) return null;
   return (
     <WalletContext.Provider value={{ wallet, setWallet }}>
@@ -43,6 +45,8 @@ export function App() {
           <Profile ref_={traderRef} />
         ) : isBoard ? (
           <Leaderboard />
+        ) : isStudio ? (
+          <Studio user={user} onUser={setUser} />
         ) : user ? (
           <Account user={user} onLogout={logout} onExpired={logout} />
         ) : (

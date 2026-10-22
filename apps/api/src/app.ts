@@ -6,6 +6,7 @@ import { StrikeApiError } from "@pit/strike-sdk";
 import Fastify, { type FastifyReply, type FastifyRequest } from "fastify";
 import type pg from "pg";
 import { ZodError } from "zod";
+import type { DraftFn } from "./ai/translate.js";
 import type { ApiConfig } from "./config.js";
 import { ReconnectRequiredError, type StrikeGateway } from "./gateway.js";
 import { accountRoutes } from "./routes/account.js";
@@ -14,6 +15,7 @@ import { callsRoutes } from "./routes/calls.js";
 import { followsRoutes } from "./routes/follows.js";
 import { fundsRoutes } from "./routes/funds.js";
 import { shareRoutes } from "./routes/share.js";
+import { strategiesRoutes } from "./routes/strategies.js";
 import { tradersRoutes } from "./routes/traders.js";
 import { type SessionUser, userForSession } from "./sessions.js";
 
@@ -27,6 +29,8 @@ export interface AppDeps {
   pool: pg.Pool;
   vault: KeyVault;
   gateway: StrikeGateway;
+  /** Plain English -> validated strategy spec. Null when no AI key is configured. */
+  draft: DraftFn | null;
   api: ApiConfig;
   requireUser: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
   /** The signed-in user if there is a valid session, else null. Never rejects. */
@@ -88,5 +92,6 @@ export async function buildApp(
   followsRoutes(app, d);
   shareRoutes(app, d);
   tradersRoutes(app, d);
+  strategiesRoutes(app, d);
   return app;
 }

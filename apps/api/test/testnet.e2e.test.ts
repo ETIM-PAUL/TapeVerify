@@ -15,6 +15,7 @@ import { base58 } from "@scure/base";
 import pg from "pg";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { createDrafter, loadAiConfig } from "../src/ai/translate.js";
 import { buildApp } from "../src/app.js";
 import { loadApiConfig } from "../src/config.js";
 import { StrikeGateway } from "../src/gateway.js";
@@ -32,7 +33,14 @@ beforeAll(async () => {
     BUILDER_FEE_BPS: "10",
   });
   gateway = new StrikeGateway(pool, vault, cfg);
-  app = await buildApp({ pool, vault, gateway, api: loadApiConfig({ RATE_LIMIT: "off" }) });
+  const ai = loadAiConfig();
+  app = await buildApp({
+    pool,
+    vault,
+    gateway,
+    draft: ai ? createDrafter(ai) : null,
+    api: loadApiConfig({ RATE_LIMIT: "off" }),
+  });
 });
 afterAll(async () => {
   await app.close();
@@ -179,4 +187,48 @@ describe("Strike testnet through Pit's API", () => {
     });
     expect(tiny.json().code).toBe("bad_size"); // under Strike's $100 minimum order value
   }, 90_000);
+
+  it.skipIf(!process.env.OPENAI_API_KEY)(
+    "drafts a strategy from plain English with the real model, then saves it and reads it back",
+    async () => {
+      const priv = ed.utils.randomPrivateKey();
+      const address = base58.encode(ed.getPublicKey(priv));
+      const cookie = await connect("solana", address, async (m) =>
+        base58.encode(ed.sign(new TextEncoder().encode(m), priv)),
+      );
+      const r = await app.inject({
+        method: "POST",
+        url: "/v1/strategies/draft",
+        headers: { cookie },
+        payload: {
+          prompt:
+            "Buy ETH when the 1 hour RSI(14) falls below 28 and close once it is above 55. 3x leverage, 2.5% stop.",
+        },
+      });
+      expect(r.statusCode, r.body).toBe(200);
+      const d = r.json();
+      expect(d.spec).toMatchObject({ market: "ETH-USD", timeframe: "1h", direction: "long" });
+      expect(d.spec.exit.stopLossPct).toBe(2.5);
+      expect(d.spec.sizing.leverage).toBe(3);
+      expect(d.description.lines.length).toBeGreaterThan(3);
+      console.log(
+        `${d.description.headline}\n${d.description.lines.map((l: { label: string; text: string }) => `  ${l.label}: ${l.text}`).join("\n")}\n  assumed: ${d.assumptions.join(" | ")}`,
+      );
+
+      const saved = await app.inject({
+        method: "POST",
+        url: "/v1/strategies",
+        headers: { cookie },
+        payload: { spec: d.spec, source: "ai", prompt: "x" },
+      });
+      expect(saved.statusCode, saved.body).toBe(201);
+      const got = await app.inject({
+        method: "GET",
+        url: `/v1/strategies/${saved.json().id}`,
+        headers: { cookie },
+      });
+      expect(got.json().issues).toEqual([]);
+    },
+    120_000,
+  );
 });
