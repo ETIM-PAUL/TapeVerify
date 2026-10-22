@@ -2,6 +2,7 @@ import { useState } from "react";
 import { api, type Chain } from "../api";
 import { connectWallet } from "../connect";
 import { usd } from "../format";
+import { EVM_CHAIN } from "../network";
 import { useWallet } from "../wallet-context";
 import {
   type EvmTx,
@@ -34,10 +35,13 @@ export function Deposit({
   chain,
   address,
   onDone,
+  bare = false,
 }: {
   chain: Chain;
   address: string;
   onDone: () => void;
+  /** Inside the funds dialog: no card around it and no repeated heading. */
+  bare?: boolean;
 }) {
   const { wallet, setWallet } = useWallet();
   const [asset, setAsset] = useState(ASSETS[chain][0] as string);
@@ -82,7 +86,7 @@ export function Deposit({
 
       let txHash: string;
       if (w.chain === "ethereum" && built.format === "evm_tx_params") {
-        txHash = await sendEvmDeposit(w.provider, built.unsigned_tx, built.approval_tx);
+        txHash = await sendEvmDeposit(w.provider, built.unsigned_tx, built.approval_tx, EVM_CHAIN);
       } else if (w.chain === "solana" && built.format === "solana_base64") {
         txHash = await sendSolanaDeposit(w.provider, built.unsigned_tx);
       } else if (w.chain === "cardano" && built.format === "cardano_cbor") {
@@ -107,8 +111,8 @@ export function Deposit({
   }
 
   return (
-    <div className="card">
-      <h2>Deposit</h2>
+    <div className={bare ? "funds" : "card"}>
+      {!bare && <h2>Deposit</h2>}
       <div className="row">
         <select
           value={asset}
@@ -134,6 +138,17 @@ export function Deposit({
           Get quote
         </button>
       </div>
+      <p className="muted small">
+        The amount is in the asset you choose, not dollars. The deposit must be worth at least $5 at
+        the quoted rate.
+      </p>
+      {/* {chain === "ethereum" && (
+        <p className="muted small">
+          Your wallet will be asked to switch to{" "}
+          {EVM_CHAIN === "sepolia" ? "Sepolia" : "Ethereum mainnet"}. The network fee is paid in ETH
+          on that network.
+        </p>
+      )} */}
       {quote && (
         <div className="quote">
           <p>

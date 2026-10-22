@@ -13,7 +13,9 @@ interface Item {
   appeal: { id: string; message: string; priorStatus: string } | null;
 }
 
-const BASE = import.meta.env.VITE_TAPE_API_URL ?? "http://localhost:3001";
+// On localhost the API is on its own port. Opened through a tunnel, the same address serves the API too.
+const LOCAL = ["localhost", "127.0.0.1", "[::1]"].includes(window.location.hostname);
+const BASE = import.meta.env.VITE_TAPE_API_URL ?? (LOCAL ? "http://localhost:3001" : "");
 
 /** Operator review queue. The token is held in memory only and sent with each request. */
 export function VerifyAdmin() {

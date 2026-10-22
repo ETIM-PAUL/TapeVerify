@@ -5,8 +5,10 @@ import { CallPage } from "./components/CallPage";
 import { Connect } from "./components/Connect";
 import { Earnings } from "./components/Earnings";
 import { Guardrails } from "./components/Guardrails";
+import { Landing } from "./components/Landing";
 import { Leaderboard } from "./components/Leaderboard";
 import { ListingPage } from "./components/ListingPage";
+import { LogoMark } from "./components/Logo";
 import { Market } from "./components/Market";
 import { NavBar } from "./components/NavBar";
 import { Profile } from "./components/Profile";
@@ -17,6 +19,7 @@ import { Trust } from "./components/Trust";
 import { AlertsBanner, StrikeHealth } from "./components/Trust13";
 import { Verifier } from "./components/Verifier";
 import { VerifyAdmin } from "./components/VerifyAdmin";
+import { useLinkNavigation, usePath } from "./router";
 import { type ActiveWallet, WalletContext } from "./wallet-context";
 
 export function App() {
@@ -38,7 +41,8 @@ export function App() {
     setWallet(null);
   }, []);
 
-  const path = window.location.pathname;
+  const path = usePath();
+  useLinkNavigation();
   const callCode = path.match(/^\/call\/([A-Za-z0-9]+)$/)?.[1];
   const traderRef = path.match(/^\/t\/([A-Za-z0-9_-]+)$/)?.[1];
   const isBoard = path === "/leaderboard";
@@ -64,7 +68,13 @@ export function App() {
       isFeed ||
       isVerify,
   );
-  if (!ready && !publicPage) return null;
+  if (!ready && !publicPage) {
+    return (
+      <div className="splash" role="status" aria-label="Loading">
+        <LogoMark size={44} />
+      </div>
+    );
+  }
   return (
     <WalletContext.Provider value={{ wallet, setWallet }}>
       <NavBar user={user} onLogout={logout} />
@@ -105,7 +115,7 @@ export function App() {
         ) : user ? (
           <Account user={user} onExpired={logout} />
         ) : (
-          <Connect
+          <Landing
             onDone={(u, w) => {
               setUser(u);
               setWallet(w);

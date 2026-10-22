@@ -68,7 +68,7 @@ export function FollowTrader({
 
 // ── Feed ──
 
-function EventRow({ e }: { e: FeedEvent }) {
+export function EventRow({ e }: { e: FeedEvent }) {
   const who = (
     <>
       <a href={`/t/${e.trader.ref}`}>{e.trader.name}</a>{" "}

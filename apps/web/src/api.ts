@@ -1,4 +1,6 @@
-const BASE = import.meta.env.VITE_TAPE_API_URL ?? "http://localhost:3001";
+// On localhost the API is on its own port. Opened through a tunnel, the same address serves the API too.
+const LOCAL = ["localhost", "127.0.0.1", "[::1]"].includes(window.location.hostname);
+const BASE = import.meta.env.VITE_TAPE_API_URL ?? (LOCAL ? "http://localhost:3001" : "");
 
 export class ApiError extends Error {
   constructor(
@@ -11,14 +13,25 @@ export class ApiError extends Error {
   }
 }
 
+export const OFFLINE =
+  "TapeVerify's server isn't responding. Make sure the API is running, then try again.";
+
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
-    method,
-    credentials: "include",
-    headers: body === undefined ? undefined : { "Content-Type": "application/json" },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${BASE}${path}`, {
+      method,
+      credentials: "include",
+      headers: body === undefined ? undefined : { "Content-Type": "application/json" },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+  } catch {
+    throw new ApiError(0, OFFLINE, "offline");
+  }
   const data = await res.json().catch(() => ({}));
+  // A dev proxy answers with an empty 5xx when the API behind it is down.
+  if (!res.ok && data.error === undefined && res.status >= 500)
+    throw new ApiError(res.status, OFFLINE, "offline", data);
   if (!res.ok) throw new ApiError(res.status, data.error ?? res.statusText, data.code, data);
   return data as T;
 }

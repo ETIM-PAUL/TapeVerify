@@ -23,10 +23,13 @@ export function Withdraw({
   chain,
   address,
   onDone,
+  bare = false,
 }: {
   chain: Chain;
   address: string;
   onDone: () => void;
+  /** Inside the funds dialog: no card around it and no repeated heading. */
+  bare?: boolean;
 }) {
   const { wallet, setWallet } = useWallet();
   const [asset, setAsset] = useState(ASSETS[chain][0] as string);
@@ -92,8 +95,8 @@ export function Withdraw({
     : "";
 
   return (
-    <div className="card">
-      <h2>Withdraw</h2>
+    <div className={bare ? "funds" : "card"}>
+      {!bare && <h2>Withdraw</h2>}
       <div className="row">
         <select
           value={asset}

@@ -4,6 +4,7 @@ import {
   confirmWithdraw,
   DEPOSIT_ASSETS,
   getDepositQuote,
+  getPortfolio,
   getWithdrawQuote,
   StrikeApiError,
   toBaseUnits,
@@ -12,8 +13,17 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { AppDeps } from "../app.js";
 
-/** Strike's minimum deposit and withdrawal, USD. */
+/** Strike's documented minimum deposit and withdrawal, USD. The deposit minimum is read from Strike when it can be. */
 const MIN_USD = 5;
+
+const trim = (n: number, places: number) => n.toFixed(places).replace(/\.?0+$/, "");
+
+/** An amount of the asset that clears the minimum with a little room, rounded up so it never falls just short. */
+export function suggestAmount(minUsd: number, usdPerUnit: number): string | null {
+  if (!(usdPerUnit > 0)) return null;
+  const need = (minUsd / usdPerUnit) * 1.005;
+  return need >= 1 ? trim(Math.ceil(need * 100) / 100, 2) : trim(Math.ceil(need * 1e6) / 1e6, 6);
+}
 
 const usd = z.string().regex(/^\d+(\.\d{1,2})?$/, "Invalid USD amount");
 
@@ -22,6 +32,23 @@ export function fundsRoutes(app: FastifyInstance, d: AppDeps) {
     preHandler: d.requireUser,
     config: { rateLimit: { max: 30, timeWindow: "1 minute" } },
   };
+
+  // Strike publishes the minimum it will credit; a deposit below it can't be credited, so it is refused before any money moves.
+  const minCache = new Map<string, { at: number; usd: number }>();
+  async function minDepositUsd(userId: string): Promise<number> {
+    const hit = minCache.get(userId);
+    if (hit && Date.now() - hit.at < 10 * 60_000) return hit.usd;
+    let usd = MIN_USD;
+    try {
+      const p = await d.gateway.run(userId, (c) => getPortfolio(c));
+      const n = Number((p as { min_deposit_usd?: unknown }).min_deposit_usd);
+      if (Number.isFinite(n) && n > 0) usd = n;
+    } catch {
+      /* fall back to the documented minimum */
+    }
+    minCache.set(userId, { at: Date.now(), usd });
+    return usd;
+  }
 
   // ── Deposit: quote -> build-tx -> (wallet signs + submits) -> confirm ──
 
@@ -47,10 +74,18 @@ export function fundsRoutes(app: FastifyInstance, d: AppDeps) {
         asset_amount: assetAmount,
       }),
     );
-    if (Number(q.quote.usd_value) < MIN_USD) {
-      return reply
-        .code(400)
-        .send({ error: `Minimum deposit is $${MIN_USD}`, code: "below_minimum" });
+    const minUsd = await minDepositUsd(user.id);
+    const usdValue = Number(q.quote.usd_value);
+    if (usdValue < minUsd) {
+      const perUnit = usdValue / Number(body.amount);
+      const suggested = suggestAmount(minUsd, perUnit);
+      return reply.code(400).send({
+        error: `Minimum deposit is $${minUsd}. ${body.amount} ${body.asset} is worth $${trim(usdValue, 4)} at the current rate${suggested ? `, so try about ${suggested} ${body.asset}` : ""}.`,
+        code: "below_minimum",
+        minUsd,
+        usdValue,
+        suggestedAmount: suggested,
+      });
     }
     await d.pool.query(
       `INSERT INTO deposits (request_id, user_id, chain, asset_symbol, asset_amount, usd_value)

@@ -88,9 +88,11 @@ export async function buildApp(
     if (err instanceof ZodError)
       return reply.code(400).send({ error: "Invalid request", issues: err.issues });
     if (err instanceof ReconnectRequiredError) {
-      return reply
-        .code(401)
-        .send({ error: "Wallet session expired, reconnect", code: "reconnect_required" });
+      return reply.code(401).send({
+        error: "Wallet session expired, reconnect",
+        code: "reconnect_required",
+        reason: err.reason,
+      });
     }
     if (err instanceof StrikeApiError) {
       // Pass Strike's validation messages through; never its auth failures as-is.

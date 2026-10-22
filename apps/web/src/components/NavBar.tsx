@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { User } from "../api";
 import { shortAddr } from "../format";
+import { usePath } from "../router";
 import { LogoMark, Wordmark } from "./Logo";
 import { NotificationBell } from "./Social";
 import { Ticker } from "./Ticker";
@@ -85,7 +86,7 @@ function AccountMenu({ user, onLogout }: { user: User; onLogout: () => void }) {
 }
 
 export function NavBar({ user, onLogout }: { user: User | null; onLogout: () => void }) {
-  const path = window.location.pathname;
+  const path = usePath();
   return (
     <header className="topbar">
       <div className="topbar-in">

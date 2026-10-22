@@ -1,18 +1,27 @@
 import { useCallback, useEffect, useState } from "react";
-import { type AccountData, ApiError, api, type Call, type StrikeTx, type User } from "../api";
+import {
+  type AccountData,
+  ApiError,
+  api,
+  type Call,
+  OFFLINE,
+  type StrikeTx,
+  type User,
+} from "../api";
 import { shortAddr, usd } from "../format";
-import { Deposit } from "./Deposit";
+import { FundsModal, type FundsTab } from "./FundsModal";
 import { HandleForm } from "./HandleForm";
 import { History } from "./History";
 import { MyCalls } from "./MyCalls";
 import { NewCall } from "./NewCall";
-import { Withdraw } from "./Withdraw";
 
 export function Account({ user, onExpired }: { user: User; onExpired: () => void }) {
   const [data, setData] = useState<AccountData | null>(null);
   const [txs, setTxs] = useState<StrikeTx[]>([]);
   const [calls, setCalls] = useState<Call[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [reconnect, setReconnect] = useState<string | null>(null);
+  const [funds, setFunds] = useState<FundsTab | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -25,8 +34,12 @@ export function Account({ user, onExpired }: { user: User; onExpired: () => void
       setTxs(t.transactions);
       setCalls(c.calls);
       setError(null);
+      setReconnect(null);
     } catch (e) {
-      if (e instanceof ApiError && e.code === "reconnect_required") return onExpired();
+      if (e instanceof ApiError && e.code === "reconnect_required") {
+        setReconnect((e.data?.reason as string | undefined) ?? "no_api_wallet");
+        return;
+      }
       setError((e as Error).message);
     }
   }, [onExpired]);
@@ -38,15 +51,42 @@ export function Account({ user, onExpired }: { user: User; onExpired: () => void
   }, [load]);
 
   const a = data?.account;
-  const offline = error === "Failed to fetch";
+  const offline = error === OFFLINE;
   return (
     <div className="stack">
-      <div className="page-head">
-        <h1>Account</h1>
-        <span className="muted">
-          {user.chain} · {shortAddr(user.address)}
-        </span>
+      <div className="page-head spread">
+        <div className="page-head">
+          <h1>Account</h1>
+          <span className="muted">
+            {user.chain} · {shortAddr(user.address)}
+          </span>
+        </div>
+        <div className="row">
+          <button type="button" onClick={() => setFunds("deposit")}>
+            Deposit
+          </button>
+          <button type="button" className="ghost" onClick={() => setFunds("withdraw")}>
+            Withdraw
+          </button>
+        </div>
       </div>
+      {funds && (
+        <FundsModal
+          chain={user.chain}
+          address={user.address}
+          initial={funds}
+          onClose={() => setFunds(null)}
+          onDone={load}
+        />
+      )}
+      {reconnect && (
+        <div className="banner" role="alert">
+          <span>{RECONNECT[reconnect] ?? RECONNECT.no_api_wallet}</span>
+          <button type="button" onClick={onExpired}>
+            Reconnect wallet
+          </button>
+        </div>
+      )}
       {error && (
         <div className="banner" role="alert">
           <span>
@@ -103,14 +143,20 @@ export function Account({ user, onExpired }: { user: User; onExpired: () => void
         </div>
         <aside className="stack">
           <NewCall onCreated={load} />
-          <Deposit chain={user.chain} address={user.address} onDone={load} />
-          <Withdraw chain={user.chain} address={user.address} onDone={load} />
           <HandleForm current={user.handle} onSaved={() => {}} />
         </aside>
       </div>
     </div>
   );
 }
+
+const RECONNECT: Record<string, string> = {
+  revoked:
+    "Strike has revoked TapeVerify's trading key for this account. That happens when the same Strike account is connected somewhere else, such as another browser or app. Reconnect to create a new key.",
+  expired: "TapeVerify's trading key for this account has expired. Reconnect to create a new one.",
+  no_api_wallet:
+    "There's no trading key for this account on this network yet. Reconnect your wallet to create one.",
+};
 
 const sign = (v: unknown) => {
   const n = Number(v);

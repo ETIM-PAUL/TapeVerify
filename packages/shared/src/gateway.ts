@@ -8,8 +8,10 @@ import type pg from "pg";
 import type { StrikeConfig } from "./config.js";
 import type { KeyVault, SealedSecret } from "./vault/index.js";
 
+export type ReconnectReason = "no_api_wallet" | "expired" | "revoked";
+
 export class ReconnectRequiredError extends Error {
-  constructor() {
+  constructor(readonly reason: ReconnectReason = "no_api_wallet") {
     super("reconnect_required");
   }
 }
@@ -64,8 +66,9 @@ export class StrikeGateway {
       [userId, this.cfg.network],
     );
     const w = rows[0];
-    if (!w || (w.expires_at && new Date(w.expires_at) < new Date()))
-      throw new ReconnectRequiredError();
+    if (!w) throw new ReconnectRequiredError("no_api_wallet");
+    if (w.expires_at && new Date(w.expires_at) < new Date())
+      throw new ReconnectRequiredError("expired");
     const privateKey = this.vault
       .open(w.sealed_private_key as SealedSecret, `api_wallet:${w.id}`)
       .reveal();
@@ -87,7 +90,7 @@ export class StrikeGateway {
           "UPDATE api_wallets SET revoked_at = now() WHERE public_key = $1 AND revoked_at IS NULL",
           [c.opts.keys?.publicKey],
         );
-        throw new ReconnectRequiredError();
+        throw new ReconnectRequiredError("revoked");
       }
       throw e;
     }

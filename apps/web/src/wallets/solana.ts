@@ -6,13 +6,31 @@ type Provider = any;
 const w = () => window as any;
 
 function provider(id: string): Provider {
-  return id === "solflare" ? w().solflare : (w().phantom?.solana ?? w().solana);
+  switch (id) {
+    case "solflare":
+      return w().solflare;
+    case "backpack":
+      return w().backpack;
+    case "brave-solana":
+      return w().braveSolana;
+    case "solana":
+      return w().solana;
+    default:
+      return w().phantom?.solana ?? w().solana;
+  }
 }
 
+/** Wallets inject themselves a moment after the page loads, so this is called again until they show up. */
 export function detectSolana(): WalletInfo[] {
   const out: WalletInfo[] = [];
-  if (w().phantom?.solana) out.push({ id: "phantom", name: "Phantom", chain: "solana" });
+  const phantom = w().phantom?.solana ?? (w().solana?.isPhantom ? w().solana : null);
+  if (phantom) out.push({ id: "phantom", name: "Phantom", chain: "solana" });
   if (w().solflare) out.push({ id: "solflare", name: "Solflare", chain: "solana" });
+  if (w().backpack?.connect) out.push({ id: "backpack", name: "Backpack", chain: "solana" });
+  if (w().braveSolana) out.push({ id: "brave-solana", name: "Brave Wallet", chain: "solana" });
+  // Any other wallet that offers the common window.solana interface
+  if (!phantom && w().solana?.connect)
+    out.push({ id: "solana", name: "Solana wallet", chain: "solana" });
   return out;
 }
 
