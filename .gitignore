@@ -1,0 +1,9 @@
+build_plan.md
+docs/
+.env
+.env.*
+node_modules/
+reference/
+dist/
+coverage/
+*.log

@@ -1,0 +1,20 @@
+{
+  "name": "@pit/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "db:migrate": "tsx --env-file-if-exists=../../.env src/db/migrate.ts",
+    "db:seed": "tsx --env-file-if-exists=../../.env src/db/seed.ts"
+  },
+  "dependencies": {
+    "@pit/shared": "workspace:*",
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.19.0"
+  }
+}
