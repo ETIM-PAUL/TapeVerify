@@ -11,7 +11,9 @@ import { ReconnectRequiredError, type StrikeGateway } from "./gateway.js";
 import { accountRoutes } from "./routes/account.js";
 import { authRoutes } from "./routes/auth.js";
 import { callsRoutes } from "./routes/calls.js";
+import { followsRoutes } from "./routes/follows.js";
 import { fundsRoutes } from "./routes/funds.js";
+import { shareRoutes } from "./routes/share.js";
 import { type SessionUser, userForSession } from "./sessions.js";
 
 declare module "fastify" {
@@ -26,9 +28,14 @@ export interface AppDeps {
   gateway: StrikeGateway;
   api: ApiConfig;
   requireUser: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
+  /** The signed-in user if there is a valid session, else null. Never rejects. */
+  optionalUser: (req: FastifyRequest) => Promise<SessionUser | null>;
 }
 
-export async function buildApp(base: Omit<AppDeps, "requireUser">, logger = false) {
+export async function buildApp(
+  base: Omit<AppDeps, "requireUser" | "optionalUser">,
+  logger = false,
+) {
   const app = Fastify({
     logger: logger ? { redact: ["req.headers.cookie", "req.headers.authorization"] } : false,
     bodyLimit: 256 * 1024,
@@ -40,6 +47,10 @@ export async function buildApp(base: Omit<AppDeps, "requireUser">, logger = fals
 
   const d: AppDeps = {
     ...base,
+    optionalUser: async (req) => {
+      const token = req.cookies.pit_session;
+      return token ? await userForSession(base.pool, token) : null;
+    },
     requireUser: async (req, reply) => {
       const token = req.cookies.pit_session;
       const user = token ? await userForSession(base.pool, token) : null;
@@ -73,5 +84,7 @@ export async function buildApp(base: Omit<AppDeps, "requireUser">, logger = fals
   accountRoutes(app, d);
   fundsRoutes(app, d);
   callsRoutes(app, d);
+  followsRoutes(app, d);
+  shareRoutes(app, d);
   return app;
 }

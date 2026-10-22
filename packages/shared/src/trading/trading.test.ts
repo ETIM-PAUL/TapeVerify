@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { aggregateFills, driftBps, followability, sumSigned } from "./calls.js";
-import { isOnGrid, roundToGrid } from "./decimal-math.js";
+import { divFloor, floorToGrid, isOnGrid, roundToGrid } from "./decimal-math.js";
+import { sizeFromMargin } from "./size.js";
 import { type MarketRulesLite, validateCallOrder } from "./validate.js";
 
 const BTC: MarketRulesLite = {
@@ -202,5 +203,18 @@ describe("sumSigned", () => {
     expect(sumSigned(["-20"])).toBe("-20");
     expect(sumSigned(["0.04", "-0.04"])).toBe("0");
     expect(sumSigned([])).toBe("0");
+  });
+});
+
+describe("sizeFromMargin", () => {
+  it("divides exactly and floors onto the size grid", () => {
+    expect(divFloor("100", "3", 4)).toBe("33.3333");
+    expect(floorToGrid("0.00129999", "0.00001", "0.00001")).toBe("0.00129");
+    expect(floorToGrid("0.000009", "0.00001", "0.00001")).toBeNull();
+    // $50 margin x 10 / $80,000 = 0.00625 BTC
+    expect(sizeFromMargin("50", 10, "80000", "0.00001", "0.00001")).toBe("0.00625");
+    // never rounds up: $10 x 3 / $81,805.1 = 0.000366...
+    expect(sizeFromMargin("10", 3, "81805.1", "0.00001", "0.00001")).toBe("0.00036");
+    expect(sizeFromMargin("0.01", 1, "80000", "0.00001", "0.00001")).toBeNull();
   });
 });

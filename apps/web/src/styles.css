@@ -206,3 +206,19 @@ label {
 a {
   color: var(--accent);
 }
+.spread {
+  justify-content: space-between;
+  align-items: center;
+}
+.pill {
+  background: #1b2128;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 13px;
+  text-transform: capitalize;
+}
+.callpage {
+  max-width: 720px;
+  margin: 0 auto;
+}

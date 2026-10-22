@@ -1,8 +1,6 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import { type MarketRulesLite, validateCallOrder } from "@pit/shared";
 import {
-  cancelOrder,
-  closePositionOrder,
   getAccount,
   getAccountPositions,
   placeStrategyOrder,
@@ -12,7 +10,9 @@ import {
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { AppDeps } from "../app.js";
-import { type CallRow, callWithTrader, publicCall, shortCode } from "../calls/model.js";
+import { closeTracked } from "../calls/close.js";
+import { hasUnfinished, liveView, traderStats } from "../calls/live.js";
+import { type CallRow, callWithTrader, followView, publicCall, shortCode } from "../calls/model.js";
 
 const decimal = z
   .string()
@@ -45,7 +45,7 @@ export function callsRoutes(app: FastifyInstance, d: AppDeps) {
     config: { rateLimit: { max: 10, timeWindow: "1 minute" } },
   };
   const view = (r: CallRow & { handle: string | null; chain: string; address: string }) =>
-    publicCall(r, r, d.api.publicWebUrl);
+    publicCall(r, r, d.api.publicShareUrl);
 
   app.post("/v1/calls", guard, async (req, reply) => {
     const user = req.user!;
@@ -81,6 +81,12 @@ export function callsRoutes(app: FastifyInstance, d: AppDeps) {
       async (c) =>
         [await getAccount(c), await getAccountPositions(c, accountId, body.symbol)] as const,
     );
+    if (await hasUnfinished(d.pool, user.id, body.symbol)) {
+      return reply.code(409).send({
+        error: `You already have an unfinished ${body.symbol} call or follow`,
+        code: "call_exists",
+      });
+    }
     if (positions.length > 0) {
       return reply.code(409).send({
         error: `You already have an open ${body.symbol} position. Close it first so this call's entry is exact.`,
@@ -235,7 +241,28 @@ export function callsRoutes(app: FastifyInstance, d: AppDeps) {
     const { code } = z.object({ code: z.string().min(4).max(16) }).parse(req.params);
     const [row] = await callWithTrader(d.pool, "c.short_code = $1", [code]);
     if (!row) return reply.code(404).send({ error: "Call not found" });
-    return { call: view(row) };
+
+    let mark: string | null = null;
+    try {
+      mark = (await d.gateway.marketRules())[row.symbol]?.mark_price ?? null;
+    } catch {
+      /* live price is optional */
+    }
+    const viewer = await d.optionalUser(req);
+    let myFollow: unknown = null;
+    if (viewer) {
+      const f = await d.pool.query("SELECT * FROM follows WHERE call_id = $1 AND user_id = $2", [
+        row.id,
+        viewer.id,
+      ]);
+      myFollow = f.rows[0] ? followView(f.rows[0]) : null;
+    }
+    return {
+      call: view(row),
+      live: mark ? liveView(row, mark) : null,
+      stats: await traderStats(d.pool, row.user_id),
+      viewer: viewer ? { isOwner: viewer.id === row.user_id, follow: myFollow } : null,
+    };
   });
 
   // Manual close: market reduce-only close, then cancel the leftover TP/SL legs. The tracker records the real exit fills.
@@ -247,36 +274,9 @@ export function callsRoutes(app: FastifyInstance, d: AppDeps) {
     if (row.status !== "open" && row.status !== "expired") {
       return reply.code(409).send({ error: `A ${row.status} call can't be closed` });
     }
-    const claimed = await d.pool.query(
-      "UPDATE calls SET close_requested_at = $2, updated_at = now() WHERE id = $1 AND close_requested_at IS NULL RETURNING id",
-      [id, Date.now()],
-    );
-    if (!claimed.rowCount) return reply.code(409).send({ error: "Close already requested" });
-
-    const exitSide = row.side === "long" ? "sell" : "buy";
-    try {
-      await d.gateway.run(user.id, async (c) => {
-        await closePositionOrder(
-          c,
-          {
-            symbol: row.symbol,
-            side: exitSide,
-            size: row.entry_size ?? row.size,
-            client_order_id: `pit-close-${id}`,
-          },
-          d.gateway.cfg.builderFeeBps,
-        );
-        for (const cid of [row.tp_client_order_id, row.sl_client_order_id]) {
-          if (cid)
-            await cancelOrder(c, { symbol: row.symbol, client_order_id: cid }).catch(
-              () => undefined,
-            );
-        }
-      });
-    } catch (e) {
-      await d.pool.query("UPDATE calls SET close_requested_at = NULL WHERE id = $1", [id]);
-      throw e;
-    }
+    const r = await closeTracked(d, "calls", row);
+    if (r === "already_requested")
+      return reply.code(409).send({ error: "Close already requested" });
     const [fresh] = await callWithTrader(d.pool, "c.id = $1", [id]);
     return { call: fresh ? view(fresh) : null };
   });

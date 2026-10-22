@@ -41,16 +41,20 @@ const sum = sumSigned;
  *   open/expired -> closed when closing fills cover the entry size (exit = VWAP, reason from the closing order)
  * Nothing here trusts user input: prices and times all come from fills.
  */
+/** Both calls and follows are tracked the same way; the table name is whitelisted, never user input. */
+export type TrackedTable = "calls" | "follows";
+
 export async function trackCall(
   client: StrikeClient,
   pool: pg.Pool,
   call: TrackedCall,
   now = Date.now(),
+  table: TrackedTable = "calls",
 ): Promise<"unchanged" | "opened" | "failed" | "closed"> {
   const accountId = call.strike_account_id;
   const fail = async (reason: string) => {
     await pool.query(
-      "UPDATE calls SET status = 'failed', fail_reason = $2, updated_at = now() WHERE id = $1 AND status = 'pending'",
+      `UPDATE ${table} SET status = 'failed', fail_reason = $2, updated_at = now() WHERE id = $1 AND status = 'pending'`,
       [call.id, reason],
     );
     return "failed" as const;
@@ -83,7 +87,7 @@ export async function trackCall(
     const agg = aggregateFills(fills);
     if (!agg) return "unchanged"; // fills not visible yet; try again next tick
     const done = await pool.query(
-      `UPDATE calls SET status = 'open', entry_order_id = $2, entry_trade_id = $3, entry_price = $4,
+      `UPDATE ${table} SET status = 'open', entry_order_id = $2, entry_trade_id = $3, entry_price = $4,
               entry_size = $5, entry_fee = $6, entry_ts_ms = $7, updated_at = now()
         WHERE id = $1 AND status = 'pending'`,
       [
@@ -129,7 +133,7 @@ export async function trackCall(
   const last = closing.reduce((a, b) => (Number(b.trade_id) > Number(a.trade_id) ? b : a));
   const reason = exitReason(last, orders, call);
   const res = await pool.query(
-    `UPDATE calls SET status = 'closed', exit_price = $2, exit_size = $3, exit_ts_ms = $4, exit_reason = $5,
+    `UPDATE ${table} SET status = 'closed', exit_price = $2, exit_size = $3, exit_ts_ms = $4, exit_reason = $5,
             realized_pnl = $6, updated_at = now()
       WHERE id = $1 AND status IN ('open', 'expired')`,
     [
@@ -183,19 +187,21 @@ export class CallTracker {
       "UPDATE calls SET status = 'expired', updated_at = now() WHERE status = 'open' AND expires_at <= $1",
       [now],
     );
-    const { rows } = await this.pool.query(
-      `SELECT c.id, c.user_id, c.symbol, c.side, c.status, c.strategy_id, c.primary_client_order_id,
-              c.tp_client_order_id, c.sl_client_order_id, c.entry_trade_id, c.entry_size, c.entry_ts_ms,
-              (extract(epoch FROM c.created_at) * 1000)::bigint AS created_ms, u.strike_account_id
-         FROM calls c JOIN users u ON u.id = c.user_id
-        WHERE c.status IN ('pending', 'open', 'expired')`,
-    );
-    for (const row of rows as TrackedCall[]) {
-      try {
-        const r = await trackCall(this.client, this.pool, row, now);
-        if (r !== "unchanged") this.log.info("call updated", { callId: row.id, result: r });
-      } catch (e) {
-        this.log.warn("call tracking failed", { callId: row.id, err: errMsg(e) });
+    for (const table of ["calls", "follows"] as const) {
+      const { rows } = await this.pool.query(
+        `SELECT c.id, c.user_id, c.symbol, c.side, c.status, c.strategy_id, c.primary_client_order_id,
+                c.tp_client_order_id, c.sl_client_order_id, c.entry_trade_id, c.entry_size, c.entry_ts_ms,
+                (extract(epoch FROM c.created_at) * 1000)::bigint AS created_ms, u.strike_account_id
+           FROM ${table} c JOIN users u ON u.id = c.user_id
+          WHERE c.status IN ('pending', 'open', 'expired')`,
+      );
+      for (const row of rows as TrackedCall[]) {
+        try {
+          const r = await trackCall(this.client, this.pool, row, now, table);
+          if (r !== "unchanged") this.log.info(`${table} updated`, { id: row.id, result: r });
+        } catch (e) {
+          this.log.warn(`${table} tracking failed`, { id: row.id, err: errMsg(e) });
+        }
       }
     }
   }

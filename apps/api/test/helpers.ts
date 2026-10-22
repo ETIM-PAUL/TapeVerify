@@ -6,6 +6,30 @@ import { buildApp } from "../src/app.js";
 import { loadApiConfig } from "../src/config.js";
 import { StrikeGateway } from "../src/gateway.js";
 
+export const marketsBody = (mark: string) => ({
+  markets: {
+    "BTC-USD": {
+      symbol: "BTC-USD",
+      base_asset: "BTC",
+      status: "trading",
+      reduce_only: false,
+      default_leverage: 20,
+      margin_tiers: [
+        { max_notional: "300000", max_leverage: 150 },
+        { max_notional: "800000", max_leverage: 100 },
+      ],
+      order_tick_price: "0.10",
+      order_min_price: "0.10",
+      order_max_price: "0",
+      order_market_step_size: "0.00001",
+      order_market_min_size: "0.00001",
+      order_market_max_size: "120",
+      order_min_notional: "100",
+      mark_price: mark,
+    },
+  },
+});
+
 export const solAddress = () => base58.encode(randomBytes(32));
 export const ethAddress = () => `0x${randomBytes(20).toString("hex")}`;
 export const adaAddress = () => bech32.encode("addr_test", bech32.toWords(randomBytes(57)), 1023);
@@ -45,31 +69,7 @@ export function fakeStrike(overrides: Record<string, Handler> = {}) {
         api_wallet_expired_at: "9999-12-31T23:59:59Z",
       },
     }),
-    "GET /v2/markets": () => ({
-      body: {
-        markets: {
-          "BTC-USD": {
-            symbol: "BTC-USD",
-            base_asset: "BTC",
-            status: "trading",
-            reduce_only: false,
-            default_leverage: 20,
-            margin_tiers: [
-              { max_notional: "300000", max_leverage: 150 },
-              { max_notional: "800000", max_leverage: 100 },
-            ],
-            order_tick_price: "0.10",
-            order_min_price: "0.10",
-            order_max_price: "0",
-            order_market_step_size: "0.00001",
-            order_market_min_size: "0.00001",
-            order_market_max_size: "120",
-            order_min_notional: "100",
-            mark_price: "80000",
-          },
-        },
-      },
-    }),
+    "GET /v2/markets": () => ({ body: marketsBody("80000") }),
     "POST /v2/leverage": (c) => ({ body: { leverage: c.body?.leverage, symbol: c.body?.symbol } }),
     "POST /v2/order/strategy": (c) => ({
       status: 201,

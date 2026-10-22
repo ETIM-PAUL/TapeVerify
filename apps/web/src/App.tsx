@@ -24,18 +24,14 @@ export function App() {
     setWallet(null);
   }, []);
 
-  const callCode = window.location.pathname.match(/^\/c\/([A-Za-z0-9]+)$/)?.[1];
-  if (callCode)
-    return (
-      <main>
-        <CallPage code={callCode} />
-      </main>
-    );
-  if (!ready) return null;
+  const callCode = window.location.pathname.match(/^\/call\/([A-Za-z0-9]+)$/)?.[1];
+  if (!ready && !callCode) return null;
   return (
     <WalletContext.Provider value={{ wallet, setWallet }}>
       <main>
-        {user ? (
+        {callCode ? (
+          <CallPage code={callCode} />
+        ) : user ? (
           <Account user={user} onLogout={logout} onExpired={logout} />
         ) : (
           <Connect

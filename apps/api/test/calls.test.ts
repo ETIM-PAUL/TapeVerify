@@ -98,7 +98,7 @@ describe("creating a call", () => {
     expect(call.status).toBe("pending");
     expect(call.entry).toBeNull(); // no entry until Strike reports a fill
     expect(call.code).toMatch(/^[2-9A-HJ-NP-Za-km-z]{8}$/);
-    expect(call.url).toBe(`http://localhost:5173/c/${call.code}`);
+    expect(call.url).toBe(`http://localhost:3001/c/${call.code}`);
     expect(call.maxDriftBps).toBe(25);
     expect(call.tpPrice).toBe("84000"); // rounded to the tick
     expect(call.expiresAt).toBeGreaterThan(Date.now() + 29 * 60_000);

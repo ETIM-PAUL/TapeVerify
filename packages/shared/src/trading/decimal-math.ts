@@ -65,3 +65,26 @@ export function roundToGrid(value: string, anchor: string, step: string): string
   const k = (diff * 2n + stepN) / (stepN * 2n);
   return format(an + k * stepN, s);
 }
+
+/** a / b truncated (never rounded up) to `places` decimals. b must be positive. */
+export function divFloor(a: string, b: string, places: number): string {
+  const x = parse(a);
+  const y = parse(b);
+  if (y.n === 0n) throw new Error("Division by zero");
+  const q = (x.n * 10n ** BigInt(places + y.scale)) / (y.n * 10n ** BigInt(x.scale));
+  return format(q, places);
+}
+
+/** Largest grid point `anchor + k * step` that is <= value, or null if value < anchor. */
+export function floorToGrid(value: string, anchor: string, step: string): string | null {
+  const v = parse(value);
+  const a = parse(anchor);
+  const st = parse(step);
+  const s = Math.max(v.scale, a.scale, st.scale);
+  const vn = rescale(v, s);
+  const an = rescale(a, s);
+  const stepN = rescale(st, s);
+  if (vn < an) return null;
+  if (stepN === 0n) return format(vn, s);
+  return format(an + ((vn - an) / stepN) * stepN, s);
+}

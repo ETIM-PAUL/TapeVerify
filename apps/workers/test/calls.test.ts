@@ -335,3 +335,100 @@ describe("exit: open -> closed from real fills", () => {
     expect(await get(call.id)).toMatchObject({ status: "closed", exit_reason: "sl" });
   });
 });
+
+describe("following: the same tracker drives follows", () => {
+  it("records a follower's real entry and exit independently of the call", async () => {
+    const callRow = await insertCall({
+      status: "open",
+      entry_trade_id: "100",
+      entry_size: "0.002",
+      entry_price: "80000",
+      entry_ts_ms: String(T0),
+    });
+    const followerId = (
+      await pool.query(
+        "INSERT INTO users (chain, address, strike_account_id) VALUES ('solana', $1, $2) RETURNING id",
+        [`follower-${crypto.randomUUID()}`, ACCOUNT],
+      )
+    ).rows[0].id;
+    const id = crypto.randomUUID();
+    const strategy = crypto.randomUUID();
+    await pool.query(
+      `INSERT INTO follows (id, call_id, user_id, symbol, side, leverage, margin_usd, size, requested_ms, mark_at_request, call_entry_price, drift_bps_at_request, strategy_id, primary_client_order_id, tp_client_order_id, sl_client_order_id, created_at)
+       VALUES ($1, $2, $3, 'BTC-USD', 'long', 10, 50, 0.00625, $4, 80100, 80000, 12, $5, $6, 'f-tp', 'f-sl', to_timestamp($7))`,
+      [id, callRow.id, followerId, T0, strategy, `pit-${id}`, T0 / 1000],
+    );
+    const row = (): TrackedCall => ({
+      id,
+      user_id: followerId,
+      symbol: "BTC-USD",
+      side: "long",
+      status: "pending",
+      strategy_id: strategy,
+      primary_client_order_id: `pit-${id}`,
+      tp_client_order_id: "f-tp",
+      sl_client_order_id: "f-sl",
+      entry_trade_id: null,
+      entry_size: null,
+      entry_ts_ms: null,
+      created_ms: String(T0),
+      strike_account_id: ACCOUNT,
+    });
+
+    const w: World = {
+      orders: [
+        order({
+          id: 70,
+          client_order_id: `pit-${id}`,
+          strategy_id: strategy,
+          is_primary: true,
+          size: "0.00625",
+          filled: "0.00625",
+        }),
+      ],
+      fills: [
+        fill({
+          trade_id: 400,
+          order_id: 70,
+          price: "80100",
+          size: "0.00625",
+          timestamp: T0 + 2000,
+        }),
+      ],
+    };
+    expect(await trackCall(strike(w), pool, row(), T0 + 5000, "follows")).toBe("opened");
+    const opened = (
+      await pool.query("SELECT status, entry_price, entry_trade_id FROM follows WHERE id = $1", [
+        id,
+      ])
+    ).rows[0];
+    expect(opened.status).toBe("open");
+    expect(Number(opened.entry_price)).toBe(80100); // the follower's own fill, not the caller's 80,000
+
+    w.orders.push(order({ id: 71, client_order_id: "f-tp", side: "sell" }));
+    w.fills.push(
+      fill({
+        trade_id: 401,
+        order_id: 71,
+        side: "sell",
+        price: "84000",
+        size: "0.00625",
+        realized_pnl: "24.4",
+        timestamp: T0 + 90_000,
+      }),
+    );
+    const open = {
+      ...row(),
+      status: "open" as const,
+      entry_trade_id: "400",
+      entry_size: "0.00625",
+      entry_ts_ms: String(T0 + 2000),
+    };
+    expect(await trackCall(strike(w), pool, open, T0 + 100_000, "follows")).toBe("closed");
+    expect(
+      (await pool.query("SELECT status, exit_reason FROM follows WHERE id = $1", [id])).rows[0],
+    ).toEqual({ status: "closed", exit_reason: "tp" });
+    expect((await get(callRow.id)).status).toBe("open"); // the call itself is untouched
+    await pool.query("DELETE FROM users WHERE id = $1", [followerId]);
+  });
+});

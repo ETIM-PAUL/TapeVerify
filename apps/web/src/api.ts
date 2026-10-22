@@ -85,3 +85,40 @@ export interface MarketInfo {
   tick: string;
   maxLeverage: number;
 }
+
+export interface LiveView {
+  mark: string;
+  driftBps: number | null;
+  movePct: number | null;
+  leveragedPct: number | null;
+  followable:
+    | { ok: true; driftBps: number }
+    | { ok: false; reason: "not_open" | "expired" | "drifted"; driftBps?: number };
+}
+export interface TraderStats {
+  calls: number;
+  closed: number;
+  wins: number;
+  winRate: number | null;
+  totalPnl: string;
+  followers: number;
+}
+export interface FollowInfo {
+  id: string;
+  callId: string;
+  status: "pending" | "open" | "closed" | "failed";
+  marginUsd: string;
+  size: string;
+  entry: { price: string } | null;
+  exit: { price: string; reason: string | null; realizedPnl: string | null } | null;
+  failReason: string | null;
+  callEntryPrice: string;
+  code?: string;
+  trader?: string;
+}
+export interface CallDetail {
+  call: Call;
+  live: LiveView | null;
+  stats: TraderStats;
+  viewer: { isOwner: boolean; follow: FollowInfo | null } | null;
+}
