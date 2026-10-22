@@ -213,8 +213,12 @@ export async function runDetection(
   ];
   let raised = 0;
   for (const d of drafts) {
-    const r = await upsertFinding(pool, d);
-    if (r.inserted) raised++;
+    try {
+      const r = await upsertFinding(pool, d);
+      if (r.inserted) raised++;
+    } catch (e) {
+      if ((e as { code?: string }).code !== "23503") throw e; // the subject was deleted while we worked
+    }
   }
   await pool.query("DELETE FROM login_events WHERE ts_ms < $1", [now - win.logins]);
   return { raised, updated: drafts.length - raised, drafts: drafts.length };
@@ -295,40 +299,45 @@ export async function recomputeReputation(
       findings: recs,
       now,
     });
-    await pool.query(
-      `INSERT INTO trader_reputation (user_id, score, performance, confidence, penalty, clean, clean_reasons, penalties, trades, computed_at)
+    try {
+      await pool.query(
+        `INSERT INTO trader_reputation (user_id, score, performance, confidence, penalty, clean, clean_reasons, penalties, trades, computed_at)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9, now())
        ON CONFLICT (user_id) DO UPDATE SET score = EXCLUDED.score, performance = EXCLUDED.performance, confidence = EXCLUDED.confidence, penalty = EXCLUDED.penalty,
          clean = EXCLUDED.clean, clean_reasons = EXCLUDED.clean_reasons, penalties = EXCLUDED.penalties, trades = EXCLUDED.trades, computed_at = now()`,
-      [
-        u.id,
-        rep.score,
-        rep.performance,
-        rep.confidence,
-        rep.penalty,
-        clean.clean,
-        JSON.stringify(clean.reasons),
-        JSON.stringify(rep.penalties),
-        stats.trades,
-      ],
-    );
-    const was = before.get(u.id);
-    if (was !== rep.score) {
-      const top = rep.penalties[0];
-      await pool.query(
-        "INSERT INTO reputation_history (user_id, ts_ms, score, previous, reason) VALUES ($1,$2,$3,$4,$5)",
         [
           u.id,
-          now,
           rep.score,
-          was ?? null,
-          was === undefined
-            ? "first score"
-            : rep.score < was
-              ? `penalty: ${top?.kind ?? "recomputed"}`
-              : "restored",
+          rep.performance,
+          rep.confidence,
+          rep.penalty,
+          clean.clean,
+          JSON.stringify(clean.reasons),
+          JSON.stringify(rep.penalties),
+          stats.trades,
         ],
       );
+      const was = before.get(u.id);
+      if (was !== rep.score) {
+        const top = rep.penalties[0];
+        await pool.query(
+          "INSERT INTO reputation_history (user_id, ts_ms, score, previous, reason) VALUES ($1,$2,$3,$4,$5)",
+          [
+            u.id,
+            now,
+            rep.score,
+            was ?? null,
+            was === undefined
+              ? "first score"
+              : rep.score < was
+                ? `penalty: ${top?.kind ?? "recomputed"}`
+                : "restored",
+          ],
+        );
+      }
+    } catch (e) {
+      if ((e as { code?: string }).code === "23503") continue; // the user was deleted while we worked
+      throw e;
     }
     n++;
   }

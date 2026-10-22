@@ -5,6 +5,7 @@ export * from "./gateway.js";
 export * from "./marketplace.js";
 export * from "./orderbook/book.js";
 export * from "./orderbook/decimal.js";
+export * from "./social.js";
 export * from "./strategy/index.js";
 export * from "./trading/calls.js";
 export * from "./trading/load.js";

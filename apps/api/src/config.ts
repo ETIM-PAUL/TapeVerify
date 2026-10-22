@@ -30,6 +30,13 @@ const schema = z.object({
   RECORD_SIGNING_SEED: z.string().optional(),
   /** Solana RPC used to check record anchors on-chain. Defaults to devnet off mainnet. */
   ANCHOR_RPC_URL: z.string().optional(),
+  /** Username of the Telegram bot (without @), shown to users who link it. Unset = Telegram features are off. */
+  TELEGRAM_BOT_USERNAME: z
+    .string()
+    .regex(/^\w{3,64}$/)
+    .optional(),
+  /** Whether Pit's X account is set up to post (the token itself lives with the bots service). */
+  X_POSTING: z.enum(["true", "false"]).default("false"),
   TRUST_PROXY: z.enum(["true", "false"]).default("false"),
 });
 
@@ -47,6 +54,8 @@ export interface ApiConfig {
   marketMinLiveTrades: number;
   creatorShareBps: number;
   argusSalt: string;
+  telegramBot: string | null;
+  xPosting: boolean;
   recordPublicKey: string | null;
   anchorRpcUrl: string | null;
   trustProxy: boolean;
@@ -68,6 +77,8 @@ export function loadApiConfig(env: Record<string, string | undefined> = process.
     marketMinLiveTrades: e.MARKETPLACE_MIN_LIVE_TRADES,
     creatorShareBps: e.CREATOR_SHARE_BPS,
     argusSalt: e.ARGUS_SALT,
+    telegramBot: e.TELEGRAM_BOT_USERNAME ?? null,
+    xPosting: e.X_POSTING === "true",
     recordPublicKey:
       e.RECORD_PUBLIC_KEY ??
       (e.RECORD_SIGNING_SEED ? signingKeyFromSeed(e.RECORD_SIGNING_SEED).publicKey : null),

@@ -290,6 +290,8 @@ export interface AlertOut {
   resolution: string | null;
 }
 export interface Profile {
+  fans: number;
+  viewer: { isSelf: boolean; following: boolean } | null;
   fairFill: FairSummary | null;
   trader: { ref: string; handle: string | null; chain: string; address: string };
   argus: ArgusInfo | null;
@@ -614,5 +616,73 @@ export interface Earnings {
     payoutRef: string | null;
   }>;
   daily: Array<{ day: string; amount: string }>;
+  note: string;
+}
+
+export interface FeedEvent {
+  kind: "call_opened" | "call_closed" | "trade_closed";
+  at: number;
+  trader: {
+    ref: string;
+    name: string;
+    chain: string;
+    argus: { clean?: boolean; underReview?: boolean; score?: number } | null;
+  };
+  call?: {
+    code: string;
+    symbol: string;
+    side: "long" | "short";
+    leverage: number;
+    entryPrice: string;
+    exitPrice: string | null;
+    exitReason: string | null;
+    comments: number;
+  };
+  trade?: {
+    symbol: string;
+    side: "long" | "short";
+    entryPrice: string;
+    exitPrice: string;
+    netPnl: string;
+    liquidated: boolean;
+  };
+}
+export interface CommentOut {
+  id: string;
+  body: string;
+  at: number;
+  author: { ref: string; name: string; isCaller: boolean };
+  canDelete: boolean;
+}
+export interface NotificationOut {
+  id: string;
+  kind: string;
+  title: string;
+  body: string;
+  url: string | null;
+  at: number;
+  read: boolean;
+}
+export interface ConnectionsOut {
+  telegram: { available: boolean; bot: string | null; linked: boolean; username: string | null };
+  x: { available: boolean };
+  channels: Array<{ id: string; kind: "telegram" | "x"; title: string; active: boolean }>;
+}
+export interface VaultOut {
+  eligible: boolean;
+  criteria: Array<{ key: string; label: string; have: string; need: string; met: boolean }>;
+  vault: {
+    id: string;
+    name: string;
+    status: string;
+    equity: string;
+    sharePrice: string;
+    depositors: number;
+    allTimePnl: string;
+    leaderCommissionBps: number;
+  } | null;
+  lookupFailed: boolean;
+  handedOffAt: number | null;
+  steps: string[];
   note: string;
 }

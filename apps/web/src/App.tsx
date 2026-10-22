@@ -10,6 +10,7 @@ import { ListingPage } from "./components/ListingPage";
 import { Market } from "./components/Market";
 import { NavBar } from "./components/NavBar";
 import { Profile } from "./components/Profile";
+import { Connections, Feed, Notifications } from "./components/Social";
 import { Studio } from "./components/Studio";
 import { Trust } from "./components/Trust";
 import { AlertsBanner, StrikeHealth } from "./components/Trust13";
@@ -44,6 +45,7 @@ export function App() {
   const isEarnings = path === "/earnings";
   const isTrust = path === "/trust";
   const isHealth = path === "/health";
+  const isFeed = path === "/feed";
   const isArgusAdmin = path === "/admin/argus";
   const publicPage = Boolean(
     callCode ||
@@ -54,7 +56,8 @@ export function App() {
       isMarket ||
       isEarnings ||
       isArgusAdmin ||
-      isHealth,
+      isHealth ||
+      isFeed,
   );
   if (!ready && !publicPage) return null;
   return (
@@ -74,6 +77,12 @@ export function App() {
           <Market />
         ) : isEarnings ? (
           <Earnings />
+        ) : isFeed ? (
+          <Feed signedIn={Boolean(user)} />
+        ) : path === "/notifications" && user ? (
+          <Notifications />
+        ) : path === "/connections" && user ? (
+          <Connections />
         ) : isHealth ? (
           <StrikeHealth />
         ) : isArgusAdmin ? (

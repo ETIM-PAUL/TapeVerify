@@ -9,6 +9,7 @@ import {
 } from "../api";
 import { duration, pctText, shortAddr, usd } from "../format";
 import { ReputationCard } from "./Reputation";
+import { FollowTrader } from "./Social";
 import { FairBadge, RecordsCard } from "./Trust13";
 
 function Curve({ points }: { points: P["curve"] }) {
@@ -103,6 +104,7 @@ export function Profile({ ref_ }: { ref_: string }) {
   const [trades, setTrades] = useState<TradeRow[]>([]);
   const [open, setOpen] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [reload, setReload] = useState(0);
 
   useEffect(() => {
     api
@@ -118,7 +120,7 @@ export function Profile({ ref_ }: { ref_: string }) {
             : (e as Error).message,
         );
       });
-  }, [ref_, tf]);
+  }, [ref_, tf, reload]);
   useEffect(() => {
     api
       .get<{ trades: TradeRow[] }>(`/v1/traders/${ref_}/trades?limit=30`)
@@ -140,6 +142,15 @@ export function Profile({ ref_ }: { ref_: string }) {
       <div className="row spread">
         <div>
           <h1>{name}</h1>
+          {!p.viewer?.isSelf && (
+            <FollowTrader
+              ref_={ref_}
+              following={Boolean(p.viewer?.following)}
+              fans={p.fans}
+              signedIn={Boolean(p.viewer)}
+              onChange={() => setReload((n) => n + 1)}
+            />
+          )}
           <p className="muted">
             {p.trader.chain} ·{" "}
             {p.ranked ? "ranked" : `not ranked yet (${p.unrankedReason?.replaceAll("_", " ")})`}

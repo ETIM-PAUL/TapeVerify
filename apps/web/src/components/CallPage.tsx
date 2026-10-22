@@ -6,6 +6,7 @@ import { Connect } from "./Connect";
 import { Deposit } from "./Deposit";
 import { FollowPanel } from "./FollowPanel";
 import { ReputationCard } from "./Reputation";
+import { Comments } from "./Social";
 
 const pct = (v: number | null) => (v === null ? "—" : `${v >= 0 ? "+" : ""}${v.toFixed(2)}%`);
 
@@ -189,6 +190,7 @@ export function CallPage({ code }: { code: string }) {
           )}
         </>
       )}
+      <Comments code={code} signedIn={Boolean(user)} />
     </div>
   );
 }

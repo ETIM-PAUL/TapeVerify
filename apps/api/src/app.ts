@@ -19,6 +19,7 @@ import { fundsRoutes } from "./routes/funds.js";
 import { liveRoutes } from "./routes/live.js";
 import { marketRoutes } from "./routes/market.js";
 import { shareRoutes } from "./routes/share.js";
+import { socialRoutes } from "./routes/social.js";
 import { strategiesRoutes } from "./routes/strategies.js";
 import { tradersRoutes } from "./routes/traders.js";
 import { trustRoutes } from "./routes/trust.js";
@@ -51,7 +52,14 @@ export async function buildApp(
     bodyLimit: 256 * 1024,
     trustProxy: base.api.trustProxy,
   });
-  await app.register(cors, { origin: base.api.webOrigin, credentials: true });
+  // Vite moves to the next port when 5173 is taken, so in development any localhost origin is fine.
+  const localOrigin = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/;
+  await app.register(cors, {
+    origin: base.api.secureCookies
+      ? base.api.webOrigin
+      : (origin, cb) => cb(null, !origin || origin === base.api.webOrigin || localOrigin.test(origin)),
+    credentials: true,
+  });
   await app.register(cookie);
   if (base.api.rateLimitEnabled)
     await app.register(rateLimit, { max: 120, timeWindow: "1 minute" });
@@ -104,5 +112,6 @@ export async function buildApp(
   marketRoutes(app, d);
   argusRoutes(app, d);
   trustRoutes(app, d);
+  socialRoutes(app, d);
   return app;
 }

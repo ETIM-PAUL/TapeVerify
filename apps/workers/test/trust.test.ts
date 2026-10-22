@@ -25,9 +25,9 @@ beforeAll(() => {
 });
 async function cleanup() {
   await pool.query("DELETE FROM users WHERE id = ANY($1)", [users.splice(0)]);
-  await pool.query("DELETE FROM trades WHERE account_id LIKE 'trust-%'");
-  await pool.query("DELETE FROM fills WHERE account_id LIKE 'trust-%'");
-  await pool.query("DELETE FROM fill_scores WHERE account_id LIKE 'trust-%'");
+  await pool.query("DELETE FROM trades WHERE account_id LIKE 'trustw-%'");
+  await pool.query("DELETE FROM fills WHERE account_id LIKE 'trustw-%'");
+  await pool.query("DELETE FROM fill_scores WHERE account_id LIKE 'trustw-%'");
   await pool.query("DELETE FROM l3_segments WHERE symbol = ANY($1)", [symbols]);
   await pool.query("DELETE FROM depth_snapshots WHERE symbol = ANY($1)", [symbols]);
   await pool.query("DELETE FROM mark_prices WHERE symbol = ANY($1)", [symbols]);
@@ -43,7 +43,7 @@ afterAll(async () => {
 });
 
 async function user(tag = "u") {
-  const account = `trust-${tag}-${crypto.randomUUID()}`;
+  const account = `trustw-${tag}-${crypto.randomUUID()}`;
   const r = await pool.query(
     "INSERT INTO users (chain, address, strike_account_id) VALUES ('solana', $1, $2) RETURNING id",
     [`trust-${crypto.randomUUID()}`, account],

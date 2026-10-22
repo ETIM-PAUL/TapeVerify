@@ -191,6 +191,22 @@ export function tradersRoutes(app: FastifyInstance, d: AppDeps) {
           : null,
         createdAt: c.created_at.getTime(),
       })),
+      fans: Number(
+        (
+          await d.pool.query("SELECT count(*) AS n FROM trader_follows WHERE trader_id = $1", [
+            t.userId,
+          ])
+        ).rows[0].n,
+      ),
+      viewer: await (async () => {
+        const v = await d.optionalUser(req);
+        if (!v) return null;
+        const f = await d.pool.query(
+          "SELECT 1 FROM trader_follows WHERE follower_id = $1 AND trader_id = $2",
+          [v.id, t.userId],
+        );
+        return { isSelf: v.id === t.userId, following: f.rowCount === 1 };
+      })(),
       followers: {
         count: Number(followers.rows[0].n),
         notionalFollowed: String(followers.rows[0].volume),

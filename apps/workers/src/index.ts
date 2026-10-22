@@ -24,6 +24,7 @@ import { EarningsJob } from "./market/earnings.js";
 import { PriceRecorder } from "./market/streams.js";
 import { PaperRunner } from "./paper/runner.js";
 import { runRetention } from "./retention.js";
+import { fanOut } from "./social/notify.js";
 
 const log = createLogger("indexer");
 const cfg = loadWorkerConfig();
@@ -60,6 +61,13 @@ const argus = new ArgusJob(
 );
 const recEnv = recordsEnv(process.env, strike.network);
 const trustJobs = [
+  new Every("social fan-out", log.child("social"), 15_000, () =>
+    fanOut(
+      pool,
+      { web: process.env.PUBLIC_WEB_URL ?? "http://localhost:5173" },
+      log.child("social"),
+    ),
+  ),
   new Every("fair-fill scoring", log.child("fairfill"), 60_000, () =>
     scoreFills(pool, log.child("fairfill")),
   ),

@@ -5,6 +5,17 @@
   "type": "module",
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run",
+    "start": "tsx --env-file-if-exists=../../.env src/index.ts",
+    "check": "tsx --env-file-if-exists=../../.env src/cli/check.ts"
+  },
+  "dependencies": {
+    "@pit/shared": "workspace:*",
+    "pg": "^8.23.1"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.23.1",
+    "tsx": "^4.23.15",
+    "vitest": "^5.0.5"
   }
 }
