@@ -1,5 +1,5 @@
-import { loadInfraConfig } from "@pit/shared";
 import pg from "pg";
+import { loadInfraConfig } from "../config.js";
 
 export function createPool(): pg.Pool {
   return new pg.Pool({ connectionString: loadInfraConfig().databaseUrl });

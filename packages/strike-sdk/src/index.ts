@@ -3,6 +3,7 @@ export * from "./builder-connect.js";
 export * from "./client.js";
 export * from "./errors.js";
 export * from "./funds.js";
+export * from "./market.js";
 export * from "./orders.js";
 export * from "./signing.js";
 export * from "./ws.js";

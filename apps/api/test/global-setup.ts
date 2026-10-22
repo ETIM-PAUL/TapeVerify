@@ -1,5 +1,5 @@
+import { runMigrations } from "@pit/shared";
 import pg from "pg";
-import { runMigrations } from "../src/db/migrations.js";
 
 /** Creates (if needed) and migrates a throwaway `pit_test` database next to the dev one. */
 export default async function setup() {

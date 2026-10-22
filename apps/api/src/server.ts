@@ -1,7 +1,6 @@
-import { KeyVault, LocalKekProvider, loadStrikeConfig } from "@pit/shared";
+import { createPool, KeyVault, LocalKekProvider, loadStrikeConfig } from "@pit/shared";
 import { buildApp } from "./app.js";
 import { loadApiConfig } from "./config.js";
-import { createPool } from "./db/pool.js";
 import { StrikeGateway } from "./gateway.js";
 
 const api = loadApiConfig();

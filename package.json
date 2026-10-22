@@ -12,11 +12,12 @@
     "lint": "biome check .",
     "format": "biome check --write .",
     "test": "pnpm -r test",
-    "test:testnet": "pnpm --filter @pit/strike-sdk test:testnet",
+    "test:testnet": "pnpm --filter @pit/strike-sdk test:testnet && pnpm --filter @pit/api test:testnet && pnpm --filter @pit/workers test:live",
     "db:up": "docker compose up -d postgres redis",
     "db:down": "docker compose down",
     "db:migrate": "pnpm --filter @pit/api db:migrate",
-    "db:seed": "pnpm --filter @pit/api db:seed"
+    "db:seed": "pnpm --filter @pit/api db:seed",
+    "indexer": "pnpm --filter @pit/workers start"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.0.0",

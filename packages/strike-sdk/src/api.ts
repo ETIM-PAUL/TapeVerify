@@ -44,3 +44,64 @@ export function getFills(c: StrikeClient, q: FillHistoryQuery = {}) {
     ? c.publicGet<{ fills: Array<Record<string, unknown>>; count: number }>(path)
     : c.get<{ fills: Array<Record<string, unknown>>; count: number }>(path);
 }
+
+export interface StrikeFill {
+  id: string;
+  trade_id: number;
+  order_id: string;
+  account_id: string;
+  symbol: string;
+  side: "buy" | "sell";
+  role: "maker" | "taker";
+  price: string;
+  size: string;
+  realized_pnl: string;
+  fee: string;
+  fee_type: string;
+  timestamp: number;
+  auto_close_type?: string;
+  liquidation_fee?: string;
+  entry_price?: string;
+  close_price?: string;
+  margin?: string;
+  roi_pct?: string;
+  leverage?: number | string;
+}
+
+/** Public fill history by account id (no auth): `since_trade_id` polls forward in ascending order. */
+export async function getAccountFills(
+  c: StrikeClient,
+  accountId: string,
+  q: { sinceTradeId?: number; fromId?: string; limit?: number } = {},
+): Promise<StrikeFill[]> {
+  const p = new URLSearchParams({ account_id: accountId, limit: String(q.limit ?? 1000) });
+  if (q.sinceTradeId !== undefined) p.set("since_trade_id", String(q.sinceTradeId));
+  if (q.fromId) p.set("fromId", q.fromId);
+  const r = await c.publicGet<{ fills: StrikeFill[] | null }>(`/v2/history/fill?${p}`);
+  return r.fills ?? [];
+}
+
+export interface StrikeFunding {
+  id: string;
+  transaction_id?: string;
+  account_id: string;
+  position_id?: string;
+  symbol: string;
+  position_size: string;
+  position_side: string;
+  funding_rate: string;
+  amount: string;
+  timestamp: number;
+}
+
+/** Public funding history by account id; pages backward from the newest with `fromId`. */
+export async function getAccountFunding(
+  c: StrikeClient,
+  accountId: string,
+  q: { fromId?: string; limit?: number } = {},
+): Promise<StrikeFunding[]> {
+  const p = new URLSearchParams({ account_id: accountId, limit: String(q.limit ?? 1000) });
+  if (q.fromId) p.set("fromId", q.fromId);
+  const r = await c.publicGet<{ funding: StrikeFunding[] | null }>(`/v2/history/funding?${p}`);
+  return r.funding ?? [];
+}

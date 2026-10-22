@@ -12,6 +12,8 @@ export function backoffMs(attempt: number, rand = Math.random): number {
 abstract class ReconnectingSocket {
   protected ws: WebSocket | null = null;
   private timer: ReturnType<typeof setTimeout> | null = null;
+  private watchdog: ReturnType<typeof setInterval> | null = null;
+  private lastActivity = Date.now();
   private attempts = 0;
   protected active = false;
   private readonly listeners = new Map<string, Set<Listener>>();
@@ -30,11 +32,16 @@ abstract class ReconnectingSocket {
     this.clearTimer();
     const ws = new WebSocket(this.url, { perMessageDeflate: true });
     this.ws = ws;
+    this.startWatchdog(ws);
     ws.on("open", () => {
       this.attempts = 0;
+      this.lastActivity = Date.now();
       this.onOpen();
     });
+    for (const ev of ["ping", "pong"] as const) ws.on(ev, () => (this.lastActivity = Date.now()));
+    ws.on("unexpected-response", () => ws.terminate());
     ws.on("message", (raw) => {
+      this.lastActivity = Date.now();
       for (const line of raw.toString().split("\n")) {
         if (!line.trim()) continue;
         try {
@@ -43,9 +50,10 @@ abstract class ReconnectingSocket {
       }
     });
     ws.on("error", (err) => this.emit("socket_error", err, {}));
-    ws.on("close", () => {
+    ws.on("close", (code) => {
+      this.stopWatchdog();
       this.ws = null;
-      this.emit("disconnected", null, {});
+      this.emit("disconnected", code, {});
       if (!this.active) return;
       this.timer = setTimeout(() => this.open(), backoffMs(++this.attempts));
     });
@@ -70,6 +78,21 @@ abstract class ReconnectingSocket {
     }
   }
 
+  /** Servers ping every ~54s; silence beyond this means a half-open connection, so drop and reconnect. */
+  protected static readonly SILENCE_MS = 120_000;
+
+  private startWatchdog(ws: WebSocket) {
+    this.stopWatchdog();
+    this.watchdog = setInterval(() => {
+      if (Date.now() - this.lastActivity > ReconnectingSocket.SILENCE_MS) ws.terminate();
+    }, 15_000);
+  }
+
+  private stopWatchdog() {
+    if (this.watchdog) clearInterval(this.watchdog);
+    this.watchdog = null;
+  }
+
   private clearTimer() {
     if (this.timer) clearTimeout(this.timer);
     this.timer = null;
@@ -78,6 +101,7 @@ abstract class ReconnectingSocket {
   disconnect() {
     this.active = false;
     this.clearTimer();
+    this.stopWatchdog();
     this.ws?.close();
     this.ws = null;
   }
@@ -107,9 +131,13 @@ export class PriceStream extends ReconnectingSocket {
   }
 
   protected onMessage(msg: Record<string, unknown>) {
-    const e = typeof msg.e === "string" ? msg.e : "";
-    if (e) this.emit(e, msg, msg);
-    this.emit("*", msg, msg);
+    // `!markprice@arr` and similar all-market channels arrive as JSON arrays of events.
+    const events = (Array.isArray(msg) ? msg : [msg]) as Array<Record<string, unknown>>;
+    for (const ev of events) {
+      const e = typeof ev.e === "string" ? ev.e : "";
+      if (e) this.emit(e, ev, ev);
+      this.emit("*", ev, ev);
+    }
   }
 }
 
@@ -158,5 +186,31 @@ export class UserStream extends ReconnectingSocket {
     if (!e) return;
     this.emit(e, msg.data, msg);
     this.emit("*", msg.data, msg);
+  }
+}
+
+/**
+ * L3 order-level stream (`/ws/l3`, no auth). Every (re)connection is a recovery boundary: on
+ * "subscribed" the consumer must fetch a fresh snapshot and discard updates at or below its
+ * sequence. Events: "update" (L3Update), "subscribed", "disconnected" (close code), "error".
+ */
+export class L3Stream extends ReconnectingSocket {
+  constructor(
+    url: string,
+    private readonly symbol: string,
+  ) {
+    super(url);
+  }
+
+  protected onOpen() {
+    // Subscribe immediately; updates can arrive before the ack, so the consumer buffers from here.
+    this.emit("connected", null, {});
+    this.send({ method: "SUBSCRIBE", params: [`${this.symbol.toLowerCase()}@l3`], id: 1 });
+  }
+
+  protected onMessage(msg: Record<string, unknown>) {
+    if (msg.type === "l3_update") return this.emit("update", msg, msg);
+    if (msg.id === 1 && "result" in msg) return this.emit("subscribed", null, msg);
+    if ("error" in msg) this.emit("error", msg.error, msg);
   }
 }

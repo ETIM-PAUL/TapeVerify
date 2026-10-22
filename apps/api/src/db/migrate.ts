@@ -1,5 +1,4 @@
-import { runMigrations } from "./migrations.js";
-import { createPool } from "./pool.js";
+import { createPool, runMigrations } from "@pit/shared";
 
 const pool = createPool();
 try {

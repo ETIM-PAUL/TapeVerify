@@ -5,6 +5,21 @@
   "type": "module",
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --exclude test/live.test.ts",
+    "test:live": "vitest run test/live.test.ts",
+    "start": "tsx --env-file-if-exists=../../.env src/index.ts",
+    "replay": "tsx --env-file-if-exists=../../.env src/cli/replay.ts",
+    "coverage": "tsx --env-file-if-exists=../../.env src/cli/coverage.ts",
+    "backfill": "tsx --env-file-if-exists=../../.env src/cli/backfill.ts"
+  },
+  "dependencies": {
+    "@pit/shared": "workspace:*",
+    "@pit/strike-sdk": "workspace:*",
+    "pg": "^8.23.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.23.1",
+    "tsx": "^4.23.15"
   }
 }

@@ -1,4 +1,4 @@
-import { createPool } from "./pool.js";
+import { createPool } from "@pit/shared";
 
 // Dev seed: fake traders (no keys, no Strike accounts). Idempotent.
 const traders = [
