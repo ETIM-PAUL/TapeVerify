@@ -11,6 +11,8 @@
     "replay": "tsx --env-file-if-exists=../../.env src/cli/replay.ts",
     "coverage": "tsx --env-file-if-exists=../../.env src/cli/coverage.ts",
     "backfill": "tsx --env-file-if-exists=../../.env src/cli/backfill.ts",
+    "records": "tsx --env-file-if-exists=../../.env src/cli/records.ts",
+    "fairfill": "tsx --env-file-if-exists=../../.env src/cli/fairfill.ts",
     "argus": "tsx --env-file-if-exists=../../.env src/cli/argus.ts",
     "stats": "tsx --env-file-if-exists=../../.env src/cli/stats.ts",
     "emergency": "tsx --env-file-if-exists=../../.env src/cli/emergency.ts"

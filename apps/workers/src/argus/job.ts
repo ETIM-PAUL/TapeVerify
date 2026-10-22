@@ -38,3 +38,33 @@ export class ArgusJob {
     if (this.timer) clearInterval(this.timer);
   }
 }
+
+/** Runs `fn` on an interval, never overlapping itself, logging instead of throwing. */
+export class Every {
+  private timer: ReturnType<typeof setInterval> | null = null;
+  private busy = false;
+  constructor(
+    private readonly name: string,
+    private readonly log: Logger,
+    private readonly intervalMs: number,
+    private readonly fn: () => Promise<unknown>,
+  ) {}
+
+  start(): void {
+    this.timer = setInterval(async () => {
+      if (this.busy) return;
+      this.busy = true;
+      try {
+        await this.fn();
+      } catch (e) {
+        this.log.error(`${this.name} failed`, { err: errMsg(e) });
+      } finally {
+        this.busy = false;
+      }
+    }, this.intervalMs);
+  }
+
+  stop(): void {
+    if (this.timer) clearInterval(this.timer);
+  }
+}

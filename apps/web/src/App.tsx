@@ -12,6 +12,7 @@ import { NavBar } from "./components/NavBar";
 import { Profile } from "./components/Profile";
 import { Studio } from "./components/Studio";
 import { Trust } from "./components/Trust";
+import { AlertsBanner, StrikeHealth } from "./components/Trust13";
 import { type ActiveWallet, WalletContext } from "./wallet-context";
 
 export function App() {
@@ -42,6 +43,7 @@ export function App() {
   const isMarket = path === "/market";
   const isEarnings = path === "/earnings";
   const isTrust = path === "/trust";
+  const isHealth = path === "/health";
   const isArgusAdmin = path === "/admin/argus";
   const publicPage = Boolean(
     callCode ||
@@ -51,13 +53,15 @@ export function App() {
       listingId ||
       isMarket ||
       isEarnings ||
-      isArgusAdmin,
+      isArgusAdmin ||
+      isHealth,
   );
   if (!ready && !publicPage) return null;
   return (
     <WalletContext.Provider value={{ wallet, setWallet }}>
       <main>
         <NavBar signedIn={Boolean(user)} />
+        {user && <AlertsBanner />}
         {callCode ? (
           <CallPage code={callCode} />
         ) : traderRef ? (
@@ -70,6 +74,8 @@ export function App() {
           <Market />
         ) : isEarnings ? (
           <Earnings />
+        ) : isHealth ? (
+          <StrikeHealth />
         ) : isArgusAdmin ? (
           <ArgusAdmin />
         ) : isTrust && user ? (

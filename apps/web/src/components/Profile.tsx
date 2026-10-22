@@ -1,7 +1,15 @@
 import { useEffect, useState } from "react";
-import { ApiError, api, type Profile as P, type Timeframe, type TradeRow } from "../api";
+import {
+  ApiError,
+  api,
+  type FairFillInfo,
+  type Profile as P,
+  type Timeframe,
+  type TradeRow,
+} from "../api";
 import { duration, pctText, shortAddr, usd } from "../format";
 import { ReputationCard } from "./Reputation";
+import { FairBadge, RecordsCard } from "./Trust13";
 
 function Curve({ points }: { points: P["curve"] }) {
   if (points.length < 2) return <p className="muted small">Not enough trades for a curve yet.</p>;
@@ -30,7 +38,12 @@ function Curve({ points }: { points: P["curve"] }) {
 
 function Proof({ ref_, trade }: { ref_: string; trade: TradeRow }) {
   const [data, setData] = useState<{
-    fills: Array<{ leg: string; qtyUsed: string; fill: Record<string, unknown> }>;
+    fills: Array<{
+      leg: string;
+      qtyUsed: string;
+      fill: Record<string, unknown>;
+      fair: FairFillInfo | null;
+    }>;
     funding: Array<{ id: string; amount: string; at: number }>;
   } | null>(null);
   useEffect(() => {
@@ -57,6 +70,7 @@ function Proof({ ref_, trade }: { ref_: string; trade: TradeRow }) {
             <th>Size</th>
             <th>Realized</th>
             <th>Fee</th>
+            <th>Fair fill</th>
           </tr>
         </thead>
         <tbody>
@@ -69,6 +83,12 @@ function Proof({ ref_, trade }: { ref_: string; trade: TradeRow }) {
               <td>{f.qtyUsed}</td>
               <td>{String(f.fill.realized_pnl)}</td>
               <td>{String(f.fill.fee)}</td>
+              <td>
+                <FairBadge fair={f.fair} />
+                {f.fair?.refPrice ? (
+                  <span className="muted small"> vs {f.fair.refPrice}</span>
+                ) : null}
+              </td>
             </tr>
           ))}
         </tbody>
@@ -171,6 +191,10 @@ export function Profile({ ref_ }: { ref_: string }) {
           <b>{usd(p.volume)}</b>
         </div>
         <div className="stat">
+          <span className="muted">Fair fills</span>
+          <b>{p.fairFill?.avgScore ?? "—"}</b>
+        </div>
+        <div className="stat">
           <span className="muted">Followers</span>
           <b>{p.followers.count}</b>
         </div>
@@ -205,6 +229,7 @@ export function Profile({ ref_ }: { ref_: string }) {
               <th>Entry</th>
               <th>Exit</th>
               <th>Net PnL</th>
+              <th>Fair fill</th>
               <th />
             </tr>
           </thead>
@@ -222,6 +247,9 @@ export function Profile({ ref_ }: { ref_: string }) {
                   <td>{usd(t.exitPrice)}</td>
                   <td className={Number(t.netPnl) >= 0 ? "ok" : "error"}>{usd(t.netPnl)}</td>
                   <td>
+                    <FairBadge fair={t.fairFill} />
+                  </td>
+                  <td>
                     <button
                       type="button"
                       className="ghost"
@@ -233,7 +261,7 @@ export function Profile({ ref_ }: { ref_: string }) {
                 </tr>
                 {open === t.id && (
                   <tr key={`${t.id}-proof`}>
-                    <td colSpan={7}>
+                    <td colSpan={8}>
                       <Proof ref_={ref_} trade={t} />
                     </td>
                   </tr>
@@ -244,6 +272,8 @@ export function Profile({ ref_ }: { ref_: string }) {
         </table>
         {trades.length === 0 && <p className="muted">No closed trades yet.</p>}
       </div>
+
+      <RecordsCard ref_={ref_} />
 
       <div className="card">
         <h2>Calls</h2>

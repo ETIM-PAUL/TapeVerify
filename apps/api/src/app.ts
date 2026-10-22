@@ -21,6 +21,7 @@ import { marketRoutes } from "./routes/market.js";
 import { shareRoutes } from "./routes/share.js";
 import { strategiesRoutes } from "./routes/strategies.js";
 import { tradersRoutes } from "./routes/traders.js";
+import { trustRoutes } from "./routes/trust.js";
 import { type SessionUser, userForSession } from "./sessions.js";
 
 declare module "fastify" {
@@ -102,5 +103,6 @@ export async function buildApp(
   liveRoutes(app, d);
   marketRoutes(app, d);
   argusRoutes(app, d);
+  trustRoutes(app, d);
   return app;
 }

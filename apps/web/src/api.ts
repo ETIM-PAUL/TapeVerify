@@ -156,6 +156,7 @@ export interface CallDetail {
   live: LiveView | null;
   stats: TraderStats;
   argus: ArgusInfo | null;
+  followerFills: { fills: number; avgScore: number; avgSlippageBps: number | null } | null;
   viewer: { isOwner: boolean; follow: FollowInfo | null } | null;
 }
 
@@ -209,8 +210,87 @@ export interface TradeRow {
   liquidated: boolean;
   split: boolean;
   fills: number;
+  fairFill: FairTrade | null;
+}
+export type FillBasis = "l3" | "depth" | "mark" | "candle" | "maker" | "none";
+export interface FairTrade {
+  score: number | null;
+  slippageBps: number | null;
+  basis: FillBasis;
+  scored: number;
+  of: number;
+}
+export interface FairFillInfo {
+  basis: FillBasis;
+  refPrice: string | null;
+  expectedPrice: string | null;
+  slippageBps: number | null;
+  score: number | null;
+  note: string | null;
+}
+export interface FairSummary {
+  trades: number;
+  scoredTrades: number;
+  avgScore: number | null;
+  avgSlippageBps: number | null;
+}
+export interface RecordRow {
+  id: number;
+  seq: number;
+  takenAt: number;
+  recordHash: string;
+  tradeCount: number;
+  stats: Record<string, unknown>;
+  batchId: number | null;
+  anchor: { chain: string; cluster: string; signature: string } | null;
+}
+export interface RecordCheck {
+  name: string;
+  ok: boolean;
+  detail?: string;
+}
+export interface RecordVerification {
+  publicKey: string;
+  recordHash: string;
+  checks: RecordCheck[];
+  verified: boolean;
+  anchor: { chain: string; cluster: string; signature: string; memo: string } | null;
+}
+export interface HealthOut {
+  status: "ok" | "watch" | "alert" | "unknown";
+  reasons: string[];
+  sampledAt: number | null;
+  slp: {
+    name: string;
+    equity: number;
+    walletBalance: number;
+    sharePrice: number;
+    depositors: number;
+    allTimePnl: number;
+    status: string;
+  } | null;
+  series: Array<{ t: number; equity: number; sharePrice: number }>;
+  lockers: { status: string; reason: string };
+  network: string;
+}
+export interface AlertOut {
+  id: string;
+  followId: string;
+  callCode: string;
+  symbol: string;
+  side: "long" | "short";
+  leverage: number;
+  level: "warn" | "danger" | "critical";
+  entryPrice: string;
+  markPrice: string;
+  liquidationPrice: string;
+  used: number;
+  raisedAt: number;
+  resolvedAt: number | null;
+  resolution: string | null;
 }
 export interface Profile {
+  fairFill: FairSummary | null;
   trader: { ref: string; handle: string | null; chain: string; address: string };
   argus: ArgusInfo | null;
   stats: StatsOut;

@@ -3,6 +3,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { AppDeps } from "../app.js";
 import { argusFor } from "../argus.js";
+import { accountFairSummary, tradeFairFills } from "../fairfill.js";
 import {
   findTrader,
   type ScoredTrader,
@@ -165,6 +166,7 @@ export function tradersRoutes(app: FastifyInstance, d: AppDeps) {
       timeframe: q.timeframe,
       market: q.market ?? "all",
       argus: (await argusFor(d.pool, [t.userId])).get(t.userId) ?? null,
+      fairFill: await accountFairSummary(d.pool, t.accountId),
       stats: scored.stats,
       volume: scored.volume,
       risk: scored.risk,
@@ -237,8 +239,14 @@ export function tradersRoutes(app: FastifyInstance, d: AppDeps) {
         ORDER BY t.id DESC LIMIT $4`,
       [t.accountId, q.before ?? null, q.market ?? null, q.limit],
     );
+    const fair = await tradeFairFills(
+      d.pool,
+      t.accountId,
+      rows.map((r) => String(r.id)),
+    );
     return {
       trades: rows.map((r) => ({
+        fairFill: fair.get(String(r.id)) ?? null,
         id: String(r.id),
         symbol: r.symbol,
         side: r.side,
@@ -277,6 +285,23 @@ export function tradersRoutes(app: FastifyInstance, d: AppDeps) {
          JOIN fills f ON f.account_id = $2 AND f.id = tf.fill_id WHERE tf.trade_id = $1 ORDER BY f.ts_ms, f.trade_id`,
       [tradeId, t.accountId],
     );
+    const sc = await d.pool.query(
+      "SELECT fill_id, basis, ref_price, expected_price, slippage_bps, score, note FROM fill_scores WHERE account_id = $1 AND fill_id = ANY($2)",
+      [t.accountId, legs.rows.map((r) => String(r.fill_id))],
+    );
+    const scores = new Map(
+      sc.rows.map((r) => [
+        String(r.fill_id),
+        {
+          basis: r.basis,
+          refPrice: r.ref_price === null ? null : String(r.ref_price),
+          expectedPrice: r.expected_price === null ? null : String(r.expected_price),
+          slippageBps: r.slippage_bps === null ? null : Number(r.slippage_bps),
+          score: r.score,
+          note: r.note,
+        },
+      ]),
+    );
     const funding = await d.pool.query(
       "SELECT id, symbol, amount, ts_ms, raw FROM funding_payments WHERE account_id = $1 AND symbol = $2 AND ts_ms BETWEEN $3 AND $4 ORDER BY ts_ms",
       [t.accountId, trade.symbol, trade.opened_ms, trade.closed_ms],
@@ -291,7 +316,12 @@ export function tradersRoutes(app: FastifyInstance, d: AppDeps) {
         fees: String(trade.fees),
         funding: String(trade.funding),
       },
-      fills: legs.rows.map((r) => ({ leg: r.leg, qtyUsed: String(r.qty), fill: r.raw })),
+      fills: legs.rows.map((r) => ({
+        leg: r.leg,
+        qtyUsed: String(r.qty),
+        fill: r.raw,
+        fair: scores.get(String(r.fill_id)) ?? null,
+      })),
       funding: funding.rows.map((r) => ({
         id: r.id,
         amount: String(r.amount),

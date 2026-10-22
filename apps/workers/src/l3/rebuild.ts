@@ -138,3 +138,43 @@ export async function l3Coverage(
   if (cursor < toMs) gaps.push({ from: cursor, to: toMs });
   return { segments, gaps, coveredMs: covered, requestedMs: toMs - fromMs };
 }
+
+/**
+ * The book exactly as it stood immediately before update `sequence` of a segment: the nearest earlier
+ * snapshot, then every update below that sequence. Used to judge a fill against what was there before
+ * the order that produced it started matching.
+ */
+export async function rebuildBookBefore(
+  pool: pg.Pool,
+  segmentId: number,
+  sequence: number,
+): Promise<L3Book | null> {
+  const snap = await pool.query(
+    "SELECT last_sequence, book FROM l3_snapshots WHERE segment_id = $1 AND last_sequence < $2 ORDER BY last_sequence DESC LIMIT 1",
+    [segmentId, sequence],
+  );
+  const row = snap.rows[0];
+  if (!row) return null;
+  const book = L3Book.fromSnapshot(row.book as L3BookSnapshot);
+  let cursor = Number(row.last_sequence);
+  for (;;) {
+    const { rows } = await pool.query(
+      `SELECT sequence, ts_ms, action, order_id, side, price, remaining_size FROM l3_updates
+        WHERE segment_id = $1 AND sequence > $2 AND sequence < $3 ORDER BY sequence LIMIT $4`,
+      [segmentId, cursor, sequence, BATCH],
+    );
+    for (const r of rows) {
+      book.apply({
+        action: r.action,
+        sequence: Number(r.sequence),
+        timestamp: Number(r.ts_ms),
+        order_id: r.order_id ?? undefined,
+        side: r.side ?? undefined,
+        price: r.price ?? undefined,
+        remaining_size: r.remaining_size ?? undefined,
+      } as L3UpdateMessage);
+      cursor = Number(r.sequence);
+    }
+    if (rows.length < BATCH) return book;
+  }
+}

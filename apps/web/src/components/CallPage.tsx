@@ -143,6 +143,14 @@ export function CallPage({ code }: { code: string }) {
             <b>{stats.followers}</b>
           </div>
         </div>
+        {detail.followerFills && (
+          <p className="small">
+            Followers' entries scored <b>{detail.followerFills.avgScore}</b>/100 for fair fills
+            {detail.followerFills.avgSlippageBps !== null &&
+              ` (${detail.followerFills.avgSlippageBps.toFixed(1)} bps average slippage)`}{" "}
+            across {detail.followerFills.fills} fills.
+          </p>
+        )}
         <p className="muted small">
           From closed calls recorded off Strike's fills. Full verified profiles come next.
         </p>

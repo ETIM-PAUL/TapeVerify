@@ -6,7 +6,11 @@ import {
   StrikeGateway,
 } from "@pit/shared";
 import { getMarketSymbols, StrikeClient } from "@pit/strike-sdk";
-import { ArgusJob } from "./argus/job.js";
+import { scoreFills } from "./argus/fairfill.js";
+import { healthTick } from "./argus/health.js";
+import { ArgusJob, Every } from "./argus/job.js";
+import { checkLiquidations } from "./argus/liquidation.js";
+import { recordsEnv, runRecords } from "./argus/records.js";
 import { CallTracker } from "./calls/tracker.js";
 import { loadWorkerConfig } from "./config.js";
 import { FillsIngester } from "./fills/ingest.js";
@@ -54,6 +58,28 @@ const argus = new ArgusJob(
   log.child("argus"),
   Number(process.env.ARGUS_INTERVAL_SECONDS || 300) * 1000,
 );
+const recEnv = recordsEnv(process.env, strike.network);
+const trustJobs = [
+  new Every("fair-fill scoring", log.child("fairfill"), 60_000, () =>
+    scoreFills(pool, log.child("fairfill")),
+  ),
+  new Every(
+    "signed records",
+    log.child("records"),
+    Number(process.env.RECORDS_INTERVAL_SECONDS || 900) * 1000,
+    () => runRecords(pool, recEnv, log.child("records")),
+  ),
+  new Every("strike health", log.child("health"), 60_000, () =>
+    healthTick(pool, client, log.child("health")),
+  ),
+  new Every(
+    "liquidation alerts",
+    log.child("liq"),
+    Number(process.env.LIQ_CHECK_SECONDS || 20) * 1000,
+    () => checkLiquidations(pool, client, log.child("liq")),
+  ),
+];
+log.info("records", { signing: Boolean(recEnv.key), anchoring: Boolean(recEnv.anchor) });
 const paper = new PaperRunner(client, pool, log.child("paper"), {
   intervalMs: Number(process.env.PAPER_TICK_SECONDS || 10) * 1000,
   builderBps: strike.builderFeeBps,
@@ -90,6 +116,7 @@ fills.start();
 calls.start();
 earnings.start();
 argus.start();
+for (const j of trustJobs) j.start();
 paper.start();
 live?.start();
 
@@ -118,6 +145,7 @@ async function shutdown(signal: string) {
   calls.stop();
   earnings.stop();
   argus.stop();
+  for (const j of trustJobs) j.stop();
   paper.stop();
   live?.stop();
   await prices.stop();

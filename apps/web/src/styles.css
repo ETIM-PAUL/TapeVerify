@@ -353,3 +353,25 @@ label.check input {
   padding: 8px 0;
   border-top: 1px solid var(--line);
 }
+.badge.ok {
+  color: var(--ok);
+  border-color: var(--ok);
+}
+.badge.warn {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.badge.error {
+  color: var(--err);
+  border-color: var(--err);
+}
+.badge.muted {
+  color: var(--muted);
+}
+.alert-warn {
+  border-color: var(--accent);
+}
+.alert-danger,
+.alert-critical {
+  border-color: var(--err);
+}

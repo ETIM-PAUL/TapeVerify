@@ -1,3 +1,4 @@
+import { signingKeyFromSeed } from "@pit/argus";
 import { z } from "zod";
 
 const schema = z.object({
@@ -21,6 +22,14 @@ const schema = z.object({
   /** Salt for the hashed sign-in addresses Argus compares. Set a long random value in production. */
   ARGUS_SALT: z.string().min(8).default("pit-dev-argus-salt"),
   /** Trust X-Forwarded-For (only behind a proxy you control), so sign-ins record the real client address. */
+  /** Public key (hex) that signs trader records. Derived from RECORD_SIGNING_SEED if that is set here instead. */
+  RECORD_PUBLIC_KEY: z
+    .string()
+    .regex(/^[0-9a-f]{64}$/)
+    .optional(),
+  RECORD_SIGNING_SEED: z.string().optional(),
+  /** Solana RPC used to check record anchors on-chain. Defaults to devnet off mainnet. */
+  ANCHOR_RPC_URL: z.string().optional(),
   TRUST_PROXY: z.enum(["true", "false"]).default("false"),
 });
 
@@ -38,6 +47,8 @@ export interface ApiConfig {
   marketMinLiveTrades: number;
   creatorShareBps: number;
   argusSalt: string;
+  recordPublicKey: string | null;
+  anchorRpcUrl: string | null;
   trustProxy: boolean;
 }
 
@@ -57,6 +68,12 @@ export function loadApiConfig(env: Record<string, string | undefined> = process.
     marketMinLiveTrades: e.MARKETPLACE_MIN_LIVE_TRADES,
     creatorShareBps: e.CREATOR_SHARE_BPS,
     argusSalt: e.ARGUS_SALT,
+    recordPublicKey:
+      e.RECORD_PUBLIC_KEY ??
+      (e.RECORD_SIGNING_SEED ? signingKeyFromSeed(e.RECORD_SIGNING_SEED).publicKey : null),
+    anchorRpcUrl:
+      e.ANCHOR_RPC_URL ??
+      (env.STRIKE_NETWORK === "mainnet" ? null : "https://api.devnet.solana.com"),
     trustProxy: e.TRUST_PROXY === "true",
   };
 }

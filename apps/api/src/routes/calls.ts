@@ -14,6 +14,7 @@ import { argusFor } from "../argus.js";
 import { closeTracked } from "../calls/close.js";
 import { hasUnfinished, liveView, traderStats } from "../calls/live.js";
 import { type CallRow, callWithTrader, followView, publicCall, shortCode } from "../calls/model.js";
+import { followerFillQuality } from "../fairfill.js";
 
 const decimal = z
   .string()
@@ -263,6 +264,7 @@ export function callsRoutes(app: FastifyInstance, d: AppDeps) {
       live: mark ? liveView(row, mark) : null,
       stats: await traderStats(d.pool, row.user_id),
       argus: (await argusFor(d.pool, [row.user_id])).get(row.user_id) ?? null,
+      followerFills: await followerFillQuality(d.pool, row.user_id),
       viewer: viewer ? { isOwner: viewer.id === row.user_id, follow: myFollow } : null,
     };
   });

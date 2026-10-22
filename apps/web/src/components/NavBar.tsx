@@ -1,3 +1,5 @@
+import { HealthBadge } from "./Trust13";
+
 export function NavBar({ signedIn }: { signedIn: boolean }) {
   return (
     <nav className="nav">
@@ -10,6 +12,7 @@ export function NavBar({ signedIn }: { signedIn: boolean }) {
       {signedIn && <a href="/earnings">Earnings</a>}
       {signedIn && <a href="/trust">Trust</a>}
       {signedIn && <a href="/">My account</a>}
+      <HealthBadge />
     </nav>
   );
 }
