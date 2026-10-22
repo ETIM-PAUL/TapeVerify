@@ -8,6 +8,8 @@ export interface StrikeClientOptions {
   keys?: ApiWalletKeys;
   builderFeeBps?: number;
   fetch?: typeof fetch;
+  /** Known server-minus-local clock offset in seconds (see syncClock). */
+  clockOffsetSec?: number;
   /** Retry transient failures (network / 5xx / 429) on idempotent requests. */
   maxRetries?: number;
 }

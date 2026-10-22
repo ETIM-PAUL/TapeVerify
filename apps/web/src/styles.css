@@ -1,0 +1,185 @@
+:root {
+  color-scheme: dark;
+  --bg: #0b0d10;
+  --panel: #14181d;
+  --line: #232a32;
+  --text: #e8ecf1;
+  --muted: #8b96a3;
+  --accent: #f5a524;
+  --ok: #3ecf8e;
+  --err: #ff6b6b;
+  font-family: Inter, system-ui, sans-serif;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+}
+main {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 16px 64px;
+}
+h1 {
+  font-size: 22px;
+  margin: 0;
+}
+h2 {
+  font-size: 15px;
+  margin: 0 0 12px;
+  letter-spacing: 0.02em;
+}
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 18px;
+}
+.narrow {
+  max-width: 460px;
+  margin: 12vh auto 0;
+}
+.narrow h1 {
+  margin-bottom: 8px;
+}
+.stack {
+  display: grid;
+  gap: 16px;
+}
+.grid2 {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: 1fr 1fr;
+}
+@media (max-width: 720px) {
+  .grid2 {
+    grid-template-columns: 1fr;
+  }
+}
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.bar .muted {
+  flex: 1;
+}
+.stats {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+.stat {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: grid;
+  gap: 4px;
+}
+.stat b {
+  font-size: 20px;
+}
+.muted {
+  color: var(--muted);
+}
+.small {
+  font-size: 12px;
+}
+.warn {
+  color: var(--accent);
+}
+.error {
+  color: var(--err);
+}
+.ok {
+  color: var(--ok);
+}
+button,
+select,
+input {
+  font: inherit;
+  color: inherit;
+  background: #1b2128;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 9px 12px;
+}
+button {
+  cursor: pointer;
+  background: var(--accent);
+  color: #1a1100;
+  border: 0;
+  font-weight: 600;
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+button.ghost {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--line);
+}
+.wallets {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+}
+.wallets button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #1b2128;
+  color: var(--text);
+  border: 1px solid var(--line);
+  text-align: left;
+}
+.wallets small {
+  margin-left: auto;
+  color: var(--muted);
+  font-weight: 400;
+}
+.row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.row input {
+  flex: 1;
+  min-width: 120px;
+}
+.quote {
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+}
+pre {
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: #0f1317;
+  padding: 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  max-height: 180px;
+  overflow: auto;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+th {
+  text-align: left;
+  color: var(--muted);
+  font-weight: 500;
+}
+th,
+td {
+  padding: 8px 6px;
+  border-bottom: 1px solid var(--line);
+}
