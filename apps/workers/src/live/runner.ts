@@ -808,8 +808,8 @@ export class LiveRunner {
     // 1. Record the intent before anything leaves this process.
     const ins = await this.pool.query(
       `INSERT INTO live_trades (run_id, seq, user_id, account_id, symbol, side, status, leverage, margin_usd, size, sl_price, tp_price, trail_pct,
-                                worst_case_loss, strategy_id, primary_client_order_id)
-       VALUES ($1,$2,$3,$4,$5,$6,'planned',$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING id`,
+                                worst_case_loss, strategy_id, primary_client_order_id, builder_bps)
+       VALUES ($1,$2,$3,$4,$5,$6,'planned',$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) RETURNING id`,
       [
         run.id,
         seq,
@@ -826,6 +826,7 @@ export class LiveRunner {
         plan.worstCaseLoss,
         strategyId,
         cid,
+        this.opts.builderBps,
       ],
     );
     const tradeId = ins.rows[0].id as string;

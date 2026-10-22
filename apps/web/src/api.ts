@@ -400,3 +400,103 @@ export interface LiveRunDetail extends Omit<LiveRunSummary, "closedTrades" | "in
   }>;
   events: Array<{ id: number; at: number; kind: string; data: Record<string, unknown> }>;
 }
+
+export interface ListingSummary {
+  id: string;
+  title: string;
+  creator: { handle: string | null; chain: string; address: string };
+  version: number;
+  publishedAt: number;
+  market: string;
+  timeframe: string;
+  direction: string;
+  leverage: number;
+  clones: number;
+  liveClones: number;
+  creatorShareBps: number;
+  record: {
+    trades: number;
+    winRate: number | null;
+    netPnl: number;
+    maxDrawdownUsd: number;
+    profitFactor: number | null;
+    avgReturnOnMarginPct: number | null;
+  };
+}
+export interface ListingDetail {
+  id: string;
+  title: string;
+  description: string;
+  status: string;
+  version: number;
+  creator: ListingSummary["creator"];
+  rules: Description;
+  market: string;
+  timeframe: string;
+  direction: string;
+  leverage: number;
+  record: ListingSummary["record"] & {
+    wins: number;
+    losses: number;
+    volumeUsd: number;
+    avgHoldMs: number | null;
+    liquidations: number;
+    firstTradeMs: number | null;
+    lastTradeMs: number | null;
+  };
+  clones: number;
+  liveClones: number;
+  terms: { creatorShareBps: number; builderBps: number; note: string };
+  warnings: string[];
+  trades: Array<{
+    seq: number;
+    side: string;
+    entryPrice: string;
+    exitPrice: string;
+    entryTs: number;
+    exitTs: number;
+    net: number;
+    reason: string | null;
+    orderId: string | null;
+    clientOrderId: string;
+  }>;
+  verification: { source: string; strikeAccountIds: string[]; check: string };
+}
+export interface Earnings {
+  totals: {
+    accrued: string;
+    paid: string;
+    builderFees: string;
+    volume: string;
+    trades: number;
+    payingClones: number;
+  };
+  listings: Array<{
+    id: string;
+    title: string;
+    status: string;
+    version: number;
+    creatorShareBps: number;
+    accrued: string;
+    paid: string;
+    volume: string;
+    trades: number;
+    clones: number;
+    liveClones: number;
+  }>;
+  recent: Array<{
+    id: number;
+    listingId: string;
+    title: string;
+    amount: string;
+    builderFee: string;
+    builderBps: number;
+    shareBps: number;
+    notional: string;
+    status: string;
+    at: number;
+    payoutRef: string | null;
+  }>;
+  daily: Array<{ day: string; amount: string }>;
+  note: string;
+}

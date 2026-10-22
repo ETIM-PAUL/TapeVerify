@@ -16,6 +16,7 @@ import { BacktestPanel } from "./BacktestPanel";
 import { Connect } from "./Connect";
 import { LivePanel } from "./LivePanel";
 import { PaperPanel } from "./PaperPanel";
+import { PublishPanel } from "./PublishPanel";
 
 const TIMEFRAMES = ["5m", "15m", "1h", "4h", "1d"];
 
@@ -425,6 +426,7 @@ export function Studio({ user, onUser }: { user: User | null; onUser: (u: User) 
       )}
       <PaperPanel strategyId={savedId} />
       <LivePanel strategyId={savedId} />
+      {savedId && spec && <PublishPanel strategyId={savedId} name={spec.name} />}
 
       <div className="card">
         <h2>My strategies</h2>

@@ -15,6 +15,7 @@ import { LiveRunner } from "./live/runner.js";
 import { createLogger, errMsg } from "./log.js";
 import { CandleIndexer } from "./market/candles.js";
 import { DepthPoller } from "./market/depth.js";
+import { EarningsJob } from "./market/earnings.js";
 import { PriceRecorder } from "./market/streams.js";
 import { PaperRunner } from "./paper/runner.js";
 import { runRetention } from "./retention.js";
@@ -46,6 +47,7 @@ const candles = new CandleIndexer(client, pool, cfg, symbols, log.child("candles
 const depth = new DepthPoller(client, pool, cfg, symbols, log.child("depth"));
 const fills = new FillsIngester(client, pool, cfg, log.child("fills"));
 const calls = new CallTracker(client, pool, log.child("calls"));
+const earnings = new EarningsJob(pool, log.child("earnings"));
 const paper = new PaperRunner(client, pool, log.child("paper"), {
   intervalMs: Number(process.env.PAPER_TICK_SECONDS || 10) * 1000,
   builderBps: strike.builderFeeBps,
@@ -80,6 +82,7 @@ candles.start();
 depth.start();
 fills.start();
 calls.start();
+earnings.start();
 paper.start();
 live?.start();
 
@@ -106,6 +109,7 @@ async function shutdown(signal: string) {
   depth.stop();
   fills.stop();
   calls.stop();
+  earnings.stop();
   paper.stop();
   live?.stop();
   await prices.stop();

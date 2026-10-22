@@ -3,7 +3,10 @@ import { api, type User } from "./api";
 import { Account } from "./components/Account";
 import { CallPage } from "./components/CallPage";
 import { Connect } from "./components/Connect";
+import { Earnings } from "./components/Earnings";
 import { Leaderboard } from "./components/Leaderboard";
+import { ListingPage } from "./components/ListingPage";
+import { Market } from "./components/Market";
 import { NavBar } from "./components/NavBar";
 import { Profile } from "./components/Profile";
 import { Studio } from "./components/Studio";
@@ -33,7 +36,12 @@ export function App() {
   const traderRef = path.match(/^\/t\/([A-Za-z0-9_-]+)$/)?.[1];
   const isBoard = path === "/leaderboard";
   const isStudio = path === "/studio";
-  const publicPage = Boolean(callCode || traderRef || isBoard || isStudio);
+  const listingId = path.match(/^\/market\/([0-9a-f-]{36})$/)?.[1];
+  const isMarket = path === "/market";
+  const isEarnings = path === "/earnings";
+  const publicPage = Boolean(
+    callCode || traderRef || isBoard || isStudio || listingId || isMarket || isEarnings,
+  );
   if (!ready && !publicPage) return null;
   return (
     <WalletContext.Provider value={{ wallet, setWallet }}>
@@ -45,6 +53,12 @@ export function App() {
           <Profile ref_={traderRef} />
         ) : isBoard ? (
           <Leaderboard />
+        ) : listingId ? (
+          <ListingPage id={listingId} />
+        ) : isMarket ? (
+          <Market />
+        ) : isEarnings ? (
+          <Earnings />
         ) : isStudio ? (
           <Studio user={user} onUser={setUser} />
         ) : user ? (

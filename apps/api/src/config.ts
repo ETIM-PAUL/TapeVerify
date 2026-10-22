@@ -12,6 +12,10 @@ const schema = z.object({
   LIVE_MAX_LEVERAGE: z.coerce.number().int().min(1).max(125).default(10),
   /** Protects the operator endpoints (emergency stop). Unset = those endpoints are disabled. */
   ADMIN_TOKEN: z.string().min(16).optional(),
+  /** Closed live trades (with the exact rules) a strategy needs before it can be listed. */
+  MARKETPLACE_MIN_LIVE_TRADES: z.coerce.number().int().min(0).default(3),
+  /** Creator's share of Pit's builder fee on clones' trades, in bps of that fee. */
+  CREATOR_SHARE_BPS: z.coerce.number().int().min(0).max(10_000).default(5000),
   /** Origin of the share links (/c/<code>, /og/<code>.png). Same domain as the web app behind a proxy in production. */
   PUBLIC_SHARE_URL: z.string().default("http://localhost:3001"),
 });
@@ -27,6 +31,8 @@ export interface ApiConfig {
   liveEnabled: boolean | undefined;
   liveMaxLeverage: number;
   adminToken: string | undefined;
+  marketMinLiveTrades: number;
+  creatorShareBps: number;
 }
 
 export function loadApiConfig(env: Record<string, string | undefined> = process.env): ApiConfig {
@@ -42,5 +48,7 @@ export function loadApiConfig(env: Record<string, string | undefined> = process.
     liveEnabled: e.LIVE_ENABLED === undefined ? undefined : e.LIVE_ENABLED === "true",
     liveMaxLeverage: e.LIVE_MAX_LEVERAGE,
     adminToken: e.ADMIN_TOKEN,
+    marketMinLiveTrades: e.MARKETPLACE_MIN_LIVE_TRADES,
+    creatorShareBps: e.CREATOR_SHARE_BPS,
   };
 }

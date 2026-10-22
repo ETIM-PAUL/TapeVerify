@@ -66,6 +66,7 @@ describe("entering", () => {
       expect.arrayContaining(["evaluated", "signal", "order_planned", "order_sent"]),
     );
     expect((await run(id)).state).toMatchObject({ signalSeq: 1, tradesToday: 1 });
+    expect((await trades(id))[0].builder_bps).toBe(10); // recorded for creator-revenue accounting
   });
 
   it("opens the trade from Strike's real fills, not from what it asked for", async () => {

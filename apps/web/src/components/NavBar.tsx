@@ -5,7 +5,9 @@ export function NavBar({ signedIn }: { signedIn: boolean }) {
         Pit
       </a>
       <a href="/leaderboard">Leaderboard</a>
+      <a href="/market">Marketplace</a>
       <a href="/studio">Studio</a>
+      {signedIn && <a href="/earnings">Earnings</a>}
       {signedIn && <a href="/">My account</a>}
     </nav>
   );
