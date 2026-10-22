@@ -11,6 +11,7 @@ import { duration, pctText, shortAddr, usd } from "../format";
 import { ReplayCard } from "./Replay";
 import { ReputationCard } from "./Reputation";
 import { FollowTrader } from "./Social";
+import { SubscribeCard } from "./Subscriptions";
 import { FairBadge, RecordsCard } from "./Trust13";
 
 function Curve({ points }: { points: P["curve"] }) {
@@ -167,6 +168,8 @@ export function Profile({ ref_ }: { ref_: string }) {
 
       <ReputationCard verify={p.verify} />
 
+      <SubscribeCard creator={ref_} signedIn={Boolean(p.viewer)} />
+
       <ReplayCard ref_={ref_} signedIn={Boolean(p.viewer)} />
 
       <div className="stats">
@@ -308,7 +311,9 @@ export function Profile({ ref_ }: { ref_: string }) {
                 <tr key={c.code}>
                   <td>
                     <a href={`/call/${c.code}`}>
-                      {c.symbol} {c.side} {c.leverage}x
+                      {c.locked
+                        ? `${c.symbol} (subscribers only)`
+                        : `${c.symbol} ${c.side} ${c.leverage}x`}
                     </a>
                   </td>
                   <td>{c.status}</td>

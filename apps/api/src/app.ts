@@ -21,8 +21,10 @@ import { marketRoutes } from "./routes/market.js";
 import { shareRoutes } from "./routes/share.js";
 import { socialRoutes } from "./routes/social.js";
 import { strategiesRoutes } from "./routes/strategies.js";
+import { subscriptionsRoutes } from "./routes/subscriptions.js";
 import { tradersRoutes } from "./routes/traders.js";
 import { trustRoutes } from "./routes/trust.js";
+import { verifierRoutes } from "./routes/verifier.js";
 import { verifyRoutes } from "./routes/verify.js";
 import { type SessionUser, userForSession } from "./sessions.js";
 
@@ -39,6 +41,8 @@ export interface AppDeps {
   /** Plain English -> validated strategy spec. Null when no AI key is configured. */
   draft: DraftFn | null;
   api: ApiConfig;
+  /** For calls out to other services (the Solana RPC); tests replace it. */
+  fetchImpl?: typeof fetch;
   requireUser: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
   /** The signed-in user if there is a valid session, else null. Never rejects. */
   optionalUser: (req: FastifyRequest) => Promise<SessionUser | null>;
@@ -116,5 +120,7 @@ export async function buildApp(
   trustRoutes(app, d);
   socialRoutes(app, d);
   copyRoutes(app, d);
+  subscriptionsRoutes(app, d);
+  verifierRoutes(app, d);
   return app;
 }

@@ -11,11 +11,13 @@ const LINKS: Array<[string, string]> = [
   ["/leaderboard", "Leaderboard"],
   ["/market", "Marketplace"],
   ["/studio", "Studio"],
+  ["/verify", "Verify"],
 ];
 
 const MENU: Array<[string, string]> = [
   ["/", "My account"],
   ["/earnings", "Earnings"],
+  ["/subscriptions", "Subscriptions"],
   ["/guardrails", "Copy guardrails"],
   ["/connections", "Connections"],
   ["/trust", "Trust record"],

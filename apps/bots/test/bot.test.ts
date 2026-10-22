@@ -195,6 +195,21 @@ describe("showing a call in a group", () => {
     expect(m.link_preview_options.url).toBe(`https://share.tape.example/c/${code}`);
   });
 
+  it("won't show a premium call that is still locked, and shows it once closed", async () => {
+    const code = await aCall();
+    await pool.query("UPDATE calls SET premium = true WHERE short_code = $1", [code]);
+    const t = fakeTelegram();
+    await handleUpdate(pool, t.api, URLS, group(++nextTg, `/call ${code}`));
+    expect(t.messages()[0]?.body.text).toMatch(/premium call for subscribers/);
+    expect(t.messages()[0]?.body.text).not.toContain("80,000");
+    await pool.query(
+      "UPDATE calls SET status = 'closed', exit_price = 84000, exit_ts_ms = 5, exit_reason = 'tp' WHERE short_code = $1",
+      [code],
+    );
+    await handleUpdate(pool, t.api, URLS, group(++nextTg, `/call ${code}`));
+    expect(t.messages()[1]?.body.text).toContain("Closed");
+  });
+
   it("falls back to a plain link where Telegram would reject a localhost button, and says when a call doesn't exist", async () => {
     const code = await aCall();
     const t = fakeTelegram();

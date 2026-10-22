@@ -3,6 +3,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { AppDeps } from "../app.js";
 import { accountFairSummary, tradeFairFills } from "../fairfill.js";
+import { activeSubscriptions, lockedNow } from "../lock.js";
 import {
   findTrader,
   type ScoredTrader,
@@ -152,10 +153,18 @@ export function tradersRoutes(app: FastifyInstance, d: AppDeps) {
       [t.accountId],
     );
     const calls = await d.pool.query(
-      `SELECT short_code, symbol, side, leverage, status, entry_price, entry_ts_ms, exit_price, exit_ts_ms, exit_reason, realized_pnl, created_at
+      `SELECT short_code, symbol, side, leverage, status, entry_price, entry_ts_ms, exit_price, exit_ts_ms, exit_reason, realized_pnl, created_at,
+              user_id, premium, public_at_ms
          FROM calls WHERE user_id = $1 AND status <> 'failed' ORDER BY created_at DESC LIMIT 50`,
       [t.userId],
     );
+    // Premium calls that are still locked show only that they exist, unless the viewer is the trader or subscribed.
+    const profileViewer = await d.optionalUser(req);
+    const subs = await activeSubscriptions(d.pool, profileViewer?.id);
+    const callsView = calls.rows.map((c) => ({
+      ...c,
+      hidden: lockedNow(c) && profileViewer?.id !== c.user_id && !subs.has(c.user_id),
+    }));
     const followers = await d.pool.query(
       "SELECT count(DISTINCT f.user_id) AS n, COALESCE(sum(f.margin_usd * f.leverage) FILTER (WHERE f.entry_price IS NOT NULL), 0) AS volume FROM follows f JOIN calls c ON c.id = f.call_id WHERE c.user_id = $1 AND f.status <> 'failed'",
       [t.userId],
@@ -174,23 +183,36 @@ export function tradersRoutes(app: FastifyInstance, d: AppDeps) {
       unrankedReason: scored.rankedOut,
       minimums: RANK_MINIMUMS[q.timeframe as Timeframe],
       curve,
-      calls: calls.rows.map((c) => ({
-        code: c.short_code,
-        symbol: c.symbol,
-        side: c.side,
-        leverage: c.leverage,
-        status: c.status,
-        entry: c.entry_price ? { price: String(c.entry_price), ts: Number(c.entry_ts_ms) } : null,
-        exit: c.exit_price
+      calls: callsView.map((c) =>
+        c.hidden
           ? {
-              price: String(c.exit_price),
-              ts: Number(c.exit_ts_ms),
-              reason: c.exit_reason,
-              realizedPnl: c.realized_pnl === null ? null : String(c.realized_pnl),
+              code: c.short_code,
+              symbol: c.symbol,
+              status: c.status,
+              locked: true,
+              createdAt: c.created_at.getTime(),
             }
-          : null,
-        createdAt: c.created_at.getTime(),
-      })),
+          : {
+              code: c.short_code,
+              symbol: c.symbol,
+              side: c.side,
+              leverage: c.leverage,
+              status: c.status,
+              locked: false,
+              entry: c.entry_price
+                ? { price: String(c.entry_price), ts: Number(c.entry_ts_ms) }
+                : null,
+              exit: c.exit_price
+                ? {
+                    price: String(c.exit_price),
+                    ts: Number(c.exit_ts_ms),
+                    reason: c.exit_reason,
+                    realizedPnl: c.realized_pnl === null ? null : String(c.realized_pnl),
+                  }
+                : null,
+              createdAt: c.created_at.getTime(),
+            },
+      ),
       fans: Number(
         (
           await d.pool.query("SELECT count(*) AS n FROM trader_follows WHERE trader_id = $1", [

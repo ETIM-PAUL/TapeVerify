@@ -37,6 +37,8 @@ const schema = z.object({
     .optional(),
   /** Whether TapeVerify's X account is set up to post (the token itself lives with the bots service). */
   X_POSTING: z.enum(["true", "false"]).default("false"),
+  /** The USDC token creators are paid in. Defaults to Circle's devnet USDC off mainnet. */
+  SUBSCRIPTIONS_USDC_MINT: z.string().min(32).max(44).optional(),
   TRUST_PROXY: z.enum(["true", "false"]).default("false"),
 });
 
@@ -55,6 +57,7 @@ export interface ApiConfig {
   creatorShareBps: number;
   verifySalt: string;
   telegramBot: string | null;
+  usdcMint: string;
   xPosting: boolean;
   recordPublicKey: string | null;
   anchorRpcUrl: string | null;
@@ -78,6 +81,11 @@ export function loadApiConfig(env: Record<string, string | undefined> = process.
     creatorShareBps: e.CREATOR_SHARE_BPS,
     verifySalt: e.VERIFY_SALT,
     telegramBot: e.TELEGRAM_BOT_USERNAME ?? null,
+    usdcMint:
+      e.SUBSCRIPTIONS_USDC_MINT ??
+      (env.STRIKE_NETWORK === "mainnet"
+        ? "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+        : "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU"),
     xPosting: e.X_POSTING === "true",
     recordPublicKey:
       e.RECORD_PUBLIC_KEY ??

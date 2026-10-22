@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { AppDeps } from "../app.js";
 import { type CallRow, callWithTrader, publicCall, type Trader } from "../calls/model.js";
 import { OG_HEIGHT, OG_WIDTH, type OgData, ogPng, price, xmlEscape } from "../calls/og.js";
+import { lockedNow } from "../lock.js";
 
 const shortAddr = (a: string) => (a.length > 16 ? `${a.slice(0, 6)}…${a.slice(-4)}` : a);
 const CODE = z.string().regex(/^[A-Za-z0-9]{4,16}$/);
@@ -110,7 +111,10 @@ export function shareRoutes(app: FastifyInstance, d: AppDeps) {
       const key = `${row.short_code}:${row.status}:${row.updated_at.getTime()}:${Math.floor(Date.now() / 30_000)}`;
       let hit = cache.get(key);
       if (!hit) {
-        hit = { at: Date.now(), png: ogPng(ogData(row, await markFor(row.symbol))) };
+        const card = lockedNow(row)
+          ? { ...ogData(row, null), locked: true }
+          : ogData(row, await markFor(row.symbol));
+        hit = { at: Date.now(), png: ogPng(card) };
         cache.set(key, hit);
         if (cache.size > 300) for (const k of [...cache.keys()].slice(0, 100)) cache.delete(k);
       }
@@ -145,6 +149,22 @@ export function shareRoutes(app: FastifyInstance, d: AppDeps) {
           );
       }
       const pub = publicCall(row, row, base);
+      // Link previews are public and cached, so a locked call never reveals its trade there.
+      if (lockedNow(row)) {
+        const who = row.handle ?? shortAddr(row.address);
+        return reply
+          .header("Content-Type", "text/html; charset=utf-8")
+          .header("Cache-Control", "public, max-age=30")
+          .send(
+            shareHtml({
+              title: `Premium call from ${who} · TapeVerify`,
+              description: `${who} posted a trade for subscribers. It becomes public with its result once it closes.`,
+              shareUrl: pub.url,
+              imageUrl: `${base}/og/${row.short_code}.png?v=locked-${row.updated_at.getTime()}`,
+              webUrl: `${web}/call/${row.short_code}`,
+            }),
+          );
+      }
       const og = ogData(row, await markFor(row.symbol));
       const move =
         og.resultPct === null

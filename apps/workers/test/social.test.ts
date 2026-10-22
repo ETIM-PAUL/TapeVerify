@@ -147,3 +147,80 @@ describe("notifications about your own positions and strategies", () => {
     expect(stops.find((n) => n.title.includes("SOL"))?.body).toContain("API wallet was revoked");
   });
 });
+
+describe("premium calls and notifications", () => {
+  async function premiumCall(userId: string, over: { publicAt?: number | null } = {}) {
+    const code = `P${Math.random().toString(36).slice(2, 9)}`;
+    const r = await pool.query(
+      `INSERT INTO calls (short_code, user_id, symbol, side, leverage, size, expires_at, max_drift_bps, status, entry_price, entry_size, entry_ts_ms, premium, public_at_ms)
+       VALUES ($1,$2,'BTC-USD','long',10,1,$3,50,'open',80000,1,$4,true,$5) RETURNING id`,
+      [code, userId, Date.now() + 3_600_000, Date.now(), over.publicAt ?? null],
+    );
+    return { id: r.rows[0].id as string, code };
+  }
+  const subscribe = (creator: string, subscriber: string, endsMs = Date.now() + 86_400_000) =>
+    pool.query(
+      "INSERT INTO subscriptions (creator_id, subscriber_id, started_ms, ends_ms) VALUES ($1,$2,$3,$4)",
+      [creator, subscriber, Date.now() - 1000, endsMs],
+    );
+
+  it("tells subscribers about a locked call and keeps everyone else out of it", async () => {
+    const creator = await user("star");
+    const follower = await user();
+    const subscriber = await user();
+    const lapsed = await user();
+    await follow(follower, creator);
+    await subscribe(creator, subscriber);
+    await subscribe(creator, lapsed, Date.now() - 1000);
+    const c = await premiumCall(creator);
+    await fanOut(pool, { web: WEB }, undefined, Date.now());
+    expect(await notes(follower)).toEqual([]); // follows, but hasn't paid
+    expect(await notes(lapsed)).toEqual([]); // paid once, no longer
+    const n = await notes(subscriber); // subscribed without following: still told
+    expect(n).toHaveLength(1);
+    expect(n[0]).toMatchObject({
+      kind: "new_call",
+      title: "New premium call from star",
+      url: `${WEB}/call/${c.code}`,
+    });
+  });
+
+  it("tells followers too once the call becomes public", async () => {
+    const creator = await user("star2");
+    const follower = await user();
+    await follow(follower, creator);
+    const c = await premiumCall(creator, { publicAt: Date.now() + 600_000 });
+    await fanOut(pool, { web: WEB }, undefined, Date.now());
+    expect(await notes(follower)).toEqual([]);
+    await pool.query("UPDATE calls SET public_at_ms = $2 WHERE id = $1", [c.id, Date.now() - 1]);
+    await fanOut(pool, { web: WEB }, undefined, Date.now());
+    expect(await notes(follower)).toHaveLength(1);
+  });
+
+  it("doesn't post a locked call to a public group, but does once it is public", async () => {
+    const creator = await user("star3");
+    await pool.query(
+      "INSERT INTO post_channels (user_id, kind, target, title, created_at) VALUES ($1,'telegram','-3001','Room', now() - interval '1 hour')",
+      [creator],
+    );
+    const locked = await premiumCall(creator);
+    await fanOut(pool, { web: WEB }, undefined, Date.now());
+    expect(
+      (await pool.query("SELECT 1 FROM outbox WHERE call_id = $1", [locked.id])).rowCount,
+    ).toBe(0);
+    await pool.query(
+      "UPDATE calls SET status = 'closed', exit_price = 84000, exit_ts_ms = $2, exit_reason = 'tp' WHERE id = $1",
+      [locked.id, Date.now()],
+    );
+    await fanOut(pool, { web: WEB }, undefined, Date.now());
+    expect(
+      (await pool.query("SELECT 1 FROM outbox WHERE call_id = $1", [locked.id])).rowCount,
+    ).toBe(0); // closed without ever being public: no "opened" post to back-fill
+    await pool.query("DELETE FROM calls WHERE id = $1", [locked.id]);
+    const delayed = await premiumCall(creator, { publicAt: Date.now() - 1 });
+    await fanOut(pool, { web: WEB }, undefined, Date.now());
+    expect(
+      (await pool.query("SELECT 1 FROM outbox WHERE call_id = $1", [delayed.id])).rowCount,
+    ).toBe(1);
+  });
+});

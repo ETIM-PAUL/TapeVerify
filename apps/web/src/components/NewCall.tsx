@@ -12,6 +12,9 @@ export function NewCall({ onCreated }: { onCreated: () => void }) {
   const [sl, setSl] = useState("");
   const [expiry, setExpiry] = useState("60");
   const [drift, setDrift] = useState("50");
+  const [premium, setPremium] = useState(false);
+  const [delay, setDelay] = useState("0");
+  const [hasPlan, setHasPlan] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [created, setCreated] = useState<Call | null>(null);
@@ -25,6 +28,13 @@ export function NewCall({ onCreated }: { onCreated: () => void }) {
         if (r.markets.length && !r.markets.some((m) => m.symbol === "BTC-USD"))
           setSymbol(r.markets[0]?.symbol ?? "");
       })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    api
+      .get<{ plan: { active: boolean } | null }>("/v1/me/plan")
+      .then((r) => setHasPlan(Boolean(r.plan?.active)))
       .catch(() => {});
   }, []);
 
@@ -47,6 +57,7 @@ export function NewCall({ onCreated }: { onCreated: () => void }) {
         slPrice: sl || undefined,
         expiryMinutes: Number(expiry),
         maxDriftBps: Number(drift),
+        ...(premium ? { premium: true, publicDelayMinutes: Number(delay) || 0 } : {}),
         requestKey,
       });
       setCreated(call);
@@ -131,6 +142,28 @@ export function NewCall({ onCreated }: { onCreated: () => void }) {
           Mark {usd(market.mark)} · value ≈ {usd(notional)} · margin ≈{" "}
           {usd(notional / (Number(leverage) || 1))} · min order {usd(market.minNotional)} · max
           leverage {market.maxLeverage}x
+        </p>
+      )}
+      {hasPlan ? (
+        <div className="stack">
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={premium}
+              onChange={(e) => setPremium(e.target.checked)}
+            />
+            Subscribers only: hide the trade from everyone else until it closes
+          </label>
+          {premium && (
+            <label className="muted small">
+              Make it public after (minutes, 0 = when it closes)
+              <input inputMode="numeric" value={delay} onChange={(e) => setDelay(e.target.value)} />
+            </label>
+          )}
+        </div>
+      ) : (
+        <p className="muted small">
+          Want to charge for early calls? <a href="/subscriptions">Open a subscription</a>.
         </p>
       )}
       <button type="button" disabled={busy || !size} onClick={submit}>

@@ -19,6 +19,7 @@ import { closeTracked } from "../calls/close.js";
 import { hasUnfinished } from "../calls/live.js";
 import { callWithTrader, type FollowRow, followView } from "../calls/model.js";
 import { evaluateGuardrails, loadGuardrails } from "../copy.js";
+import { canSeeCall, planFor } from "../lock.js";
 import { seriousFlags } from "../verify.js";
 
 const FOLLOW_ERRORS = {
@@ -50,6 +51,14 @@ export function followsRoutes(app: FastifyInstance, d: AppDeps) {
     if (!call) return reply.code(404).send({ error: "Call not found" });
     if (call.user_id === user.id)
       return reply.code(409).send({ error: "You can't follow your own call", code: "own_call" });
+    if (!(await canSeeCall(d.pool, user.id, call))) {
+      return reply.code(403).send({
+        error: "This is a subscribers-only call. Subscribe to its creator to follow it.",
+        code: "subscription_required",
+        creator: call.handle ?? call.user_id,
+        plan: await planFor(d.pool, call.user_id),
+      });
+    }
 
     const existing = await d.pool.query(
       "SELECT * FROM follows WHERE user_id = $1 AND call_id = $2",

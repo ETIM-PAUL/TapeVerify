@@ -6,6 +6,7 @@ export * from "./guardrails.js";
 export * from "./marketplace.js";
 export * from "./orderbook/book.js";
 export * from "./orderbook/decimal.js";
+export * from "./premium.js";
 export * from "./replay.js";
 export * from "./social.js";
 export * from "./strategy/index.js";

@@ -12,8 +12,10 @@ import { NavBar } from "./components/NavBar";
 import { Profile } from "./components/Profile";
 import { Connections, Feed, Notifications } from "./components/Social";
 import { Studio } from "./components/Studio";
+import { Subscriptions } from "./components/Subscriptions";
 import { Trust } from "./components/Trust";
 import { AlertsBanner, StrikeHealth } from "./components/Trust13";
+import { Verifier } from "./components/Verifier";
 import { VerifyAdmin } from "./components/VerifyAdmin";
 import { type ActiveWallet, WalletContext } from "./wallet-context";
 
@@ -47,6 +49,7 @@ export function App() {
   const isTrust = path === "/trust";
   const isHealth = path === "/health";
   const isFeed = path === "/feed";
+  const isVerify = path === "/verify";
   const isVerifyAdmin = path === "/admin/verify";
   const publicPage = Boolean(
     callCode ||
@@ -58,7 +61,8 @@ export function App() {
       isEarnings ||
       isVerifyAdmin ||
       isHealth ||
-      isFeed,
+      isFeed ||
+      isVerify,
   );
   if (!ready && !publicPage) return null;
   return (
@@ -78,6 +82,10 @@ export function App() {
           <Market />
         ) : isEarnings ? (
           <Earnings />
+        ) : path === "/subscriptions" && user ? (
+          <Subscriptions />
+        ) : isVerify ? (
+          <Verifier />
         ) : isFeed ? (
           <Feed signedIn={Boolean(user)} />
         ) : path === "/notifications" && user ? (

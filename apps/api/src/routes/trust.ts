@@ -61,6 +61,7 @@ export function trustRoutes(app: FastifyInstance, d: AppDeps) {
     return {
       algorithm: "ed25519",
       publicKey: d.api.recordPublicKey,
+      rpcUrl: d.api.anchorRpcUrl,
       anchor: anchored
         ? { chain: anchored.chain, cluster: anchored.cluster, payer: anchored.payer }
         : null,

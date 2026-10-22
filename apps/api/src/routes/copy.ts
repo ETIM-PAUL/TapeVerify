@@ -13,6 +13,7 @@ import { z } from "zod";
 import type { AppDeps } from "../app.js";
 import { callWithTrader } from "../calls/model.js";
 import { evaluateGuardrails, loadGuardrails } from "../copy.js";
+import { canSeeCall } from "../lock.js";
 import { findTrader } from "../traders/service.js";
 
 const num = z.number().positive().finite().nullable();
@@ -85,6 +86,10 @@ export function copyRoutes(app: FastifyInstance, d: AppDeps) {
       .parse(req.body);
     const [call] = await callWithTrader(d.pool, "c.short_code = $1", [code]);
     if (!call) return reply.code(404).send({ error: "Call not found" });
+    if (!(await canSeeCall(d.pool, req.user!.id, call)))
+      return reply
+        .code(403)
+        .send({ error: "This is a subscribers-only call.", code: "subscription_required" });
     const rules = (await d.gateway.marketRules())[call.symbol];
     if (!rules) return reply.code(400).send({ error: `Market ${call.symbol} unavailable` });
     const mark = rules.mark_price;

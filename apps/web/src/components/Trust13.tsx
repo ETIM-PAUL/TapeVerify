@@ -228,6 +228,14 @@ export function RecordsCard({ ref_ }: { ref_: string }) {
                   >
                     {busy === r.id ? "Checking…" : "Verify"}
                   </button>
+                  <a
+                    className="small"
+                    href={`/verify?q=${r.recordHash}`}
+                    title="Open in the public verifier"
+                  >
+                    {" "}
+                    Open verifier
+                  </a>
                 </td>
               </tr>
             ))}

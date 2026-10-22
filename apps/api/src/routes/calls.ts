@@ -12,8 +12,16 @@ import { z } from "zod";
 import type { AppDeps } from "../app.js";
 import { closeTracked } from "../calls/close.js";
 import { hasUnfinished, liveView, traderStats } from "../calls/live.js";
-import { type CallRow, callWithTrader, followView, publicCall, shortCode } from "../calls/model.js";
+import {
+  type CallRow,
+  callWithTrader,
+  followView,
+  lockedCall,
+  publicCall,
+  shortCode,
+} from "../calls/model.js";
 import { followerFillQuality } from "../fairfill.js";
+import { canSeeCall, planFor } from "../lock.js";
 import { verifyFor } from "../verify.js";
 
 const decimal = z
@@ -37,6 +45,15 @@ const createBody = z.object({
     .default(60),
   /** How far (either way) the price may move from the caller's entry before following is blocked. */
   maxDriftBps: z.number().int().min(1).max(1000).default(50),
+  /** Only subscribers can see the trade until it closes (or until the delay passes). Needs an open subscription plan. */
+  premium: z.boolean().default(false),
+  /** Minutes before a premium call becomes public. 0 keeps it for subscribers until it closes. */
+  publicDelayMinutes: z
+    .number()
+    .int()
+    .min(0)
+    .max(24 * 60)
+    .default(0),
   /** Dedupes double submits: the same key returns the same call. */
   requestKey: z.string().min(8).max(64).optional(),
 });
@@ -52,6 +69,12 @@ export function callsRoutes(app: FastifyInstance, d: AppDeps) {
   app.post("/v1/calls", guard, async (req, reply) => {
     const user = req.user!;
     const body = createBody.parse(req.body);
+    if (body.premium && !(await planFor(d.pool, user.id))) {
+      return reply.code(409).send({
+        error: "Open a subscription plan before posting subscribers-only calls.",
+        code: "no_plan",
+      });
+    }
 
     if (body.requestKey) {
       const dup = await callWithTrader(d.pool, "c.user_id = $1 AND c.request_key = $2", [
@@ -111,8 +134,8 @@ export function callsRoutes(app: FastifyInstance, d: AppDeps) {
       try {
         await d.pool.query(
           `INSERT INTO calls (id, short_code, user_id, request_key, symbol, side, leverage, size, tp_price, sl_price,
-                              expires_at, max_drift_bps, strategy_id, primary_client_order_id)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
+                              expires_at, max_drift_bps, strategy_id, primary_client_order_id, premium, public_at_ms)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
           [
             id,
             candidate,
@@ -128,6 +151,10 @@ export function callsRoutes(app: FastifyInstance, d: AppDeps) {
             body.maxDriftBps,
             randomUUID(),
             `tape-${id}`,
+            body.premium,
+            body.premium && body.publicDelayMinutes > 0
+              ? Date.now() + body.publicDelayMinutes * 60_000
+              : null,
           ],
         );
         code = candidate;
@@ -243,6 +270,19 @@ export function callsRoutes(app: FastifyInstance, d: AppDeps) {
     const { code } = z.object({ code: z.string().min(4).max(16) }).parse(req.params);
     const [row] = await callWithTrader(d.pool, "c.short_code = $1", [code]);
     if (!row) return reply.code(404).send({ error: "Call not found" });
+    const viewer = await d.optionalUser(req);
+    // A premium call is a teaser until the viewer subscribes (or it closes): nothing about the trade leaves here.
+    if (!(await canSeeCall(d.pool, viewer?.id, row))) {
+      return {
+        locked: true,
+        creator: row.handle ?? row.user_id,
+        call: lockedCall(row, row, d.api.publicShareUrl),
+        plan: await planFor(d.pool, row.user_id),
+        stats: await traderStats(d.pool, row.user_id),
+        verify: (await verifyFor(d.pool, [row.user_id])).get(row.user_id) ?? null,
+        viewer: viewer ? { isOwner: false, follow: null } : null,
+      };
+    }
 
     let mark: string | null = null;
     try {
@@ -250,7 +290,6 @@ export function callsRoutes(app: FastifyInstance, d: AppDeps) {
     } catch {
       /* live price is optional */
     }
-    const viewer = await d.optionalUser(req);
     let myFollow: unknown = null;
     if (viewer) {
       const f = await d.pool.query("SELECT * FROM follows WHERE call_id = $1 AND user_id = $2", [

@@ -146,6 +146,7 @@ export async function makeApp(
   rateLimit = false,
   draft: DraftFn | null = null,
   apiEnv: Record<string, string> = {},
+  extra: { fetchImpl?: typeof fetch } = {},
 ) {
   const pool = new pg.Pool({ connectionString: process.env.TEST_DATABASE_URL });
   const vault = new KeyVault(new LocalKekProvider("t1", { t1: randomBytes(32) }));
@@ -162,6 +163,7 @@ export async function makeApp(
     gateway,
     draft,
     api: loadApiConfig({ RATE_LIMIT: rateLimit ? "on" : "off", ...apiEnv }),
+    ...extra,
   });
   return {
     app,

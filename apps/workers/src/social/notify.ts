@@ -29,17 +29,24 @@ export async function fanOut(pool: pg.Pool, urls: SocialUrls, log?: Logger, now 
     (
       await pool.query(
         `INSERT INTO notifications (user_id, kind, ref, title, body, url)
-         SELECT tf.follower_id, 'new_call', 'call:' || c.id,
-                'New call from ' || COALESCE(u.handle, left(u.address, 6) || '…'),
+         SELECT r.uid, 'new_call', 'call:' || c.id,
+                CASE WHEN c.premium THEN 'New premium call from ' ELSE 'New call from ' END || COALESCE(u.handle, left(u.address, 6) || '…'),
                 upper(c.side) || ' ' || c.symbol || ' ' || c.leverage || 'x, entry ' || trim_scale(c.entry_price)::text,
                 $1 || '/call/' || c.short_code
            FROM calls c
            JOIN users u ON u.id = c.user_id
-           JOIN trader_follows tf ON tf.trader_id = c.user_id
+           JOIN (
+             SELECT trader_id AS creator, follower_id AS uid, extract(epoch FROM created_at) * 1000 AS since_ms FROM trader_follows
+             UNION
+             SELECT creator_id, subscriber_id, started_ms::numeric FROM subscriptions WHERE ends_ms > $3
+           ) r ON r.creator = c.user_id
           WHERE c.status IN ('open', 'closed', 'expired') AND c.entry_price IS NOT NULL AND c.entry_ts_ms > $2
-            AND c.entry_ts_ms > extract(epoch FROM tf.created_at) * 1000
+            AND c.entry_ts_ms > r.since_ms
+            -- a locked premium call only reaches people who can open it
+            AND (NOT c.premium OR c.status = 'closed' OR (c.public_at_ms IS NOT NULL AND c.public_at_ms <= $3)
+                 OR EXISTS (SELECT 1 FROM subscriptions s WHERE s.creator_id = c.user_id AND s.subscriber_id = r.uid AND s.ends_ms > $3))
          ON CONFLICT (user_id, ref) DO NOTHING`,
-        [web, since],
+        [web, since, now],
       )
     ).rowCount ?? 0;
 
@@ -94,6 +101,8 @@ export async function fanOut(pool: pg.Pool, urls: SocialUrls, log?: Logger, now 
            FROM calls c JOIN post_channels ch ON ch.user_id = c.user_id AND ch.active
           WHERE c.status IN ('open', 'closed', 'expired') AND c.entry_price IS NOT NULL AND c.entry_ts_ms > $2
             AND c.entry_ts_ms > extract(epoch FROM ch.created_at) * 1000
+            -- a premium call is only posted publicly once it is public
+            AND (NOT c.premium OR (c.public_at_ms IS NOT NULL AND c.public_at_ms <= $1))
          ON CONFLICT (call_id, channel_id, event) DO NOTHING`,
         [now, since],
       )

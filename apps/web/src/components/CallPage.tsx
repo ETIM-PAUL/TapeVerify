@@ -7,6 +7,7 @@ import { Deposit } from "./Deposit";
 import { FollowPanel } from "./FollowPanel";
 import { ReputationCard } from "./Reputation";
 import { Comments } from "./Social";
+import { SubscribeCard } from "./Subscriptions";
 
 const pct = (v: number | null) => (v === null ? "—" : `${v >= 0 ? "+" : ""}${v.toFixed(2)}%`);
 
@@ -55,6 +56,41 @@ export function CallPage({ code }: { code: string }) {
       </div>
     );
   if (!detail) return null;
+  if (detail.locked) {
+    const who = detail.call.trader.handle ?? shortAddr(detail.call.trader.address);
+    return (
+      <div className="stack callpage">
+        <div className="card lockcard stack">
+          <div className="lock" aria-hidden="true">
+            🔒
+          </div>
+          <h1>Premium call from {who}</h1>
+          <p className="muted">
+            {detail.call.symbol} · subscribers only. The trade stays hidden until it closes
+            {detail.call.publicAt
+              ? `, or until ${new Date(detail.call.publicAt).toLocaleTimeString()}`
+              : ""}
+            . Its result will be public and checkable either way.
+          </p>
+          <a href={`/t/${detail.creator ?? who}`}>See {who}'s record</a>
+        </div>
+        {detail.creator && detail.plan ? (
+          <SubscribeCard creator={detail.creator} signedIn={Boolean(user)} onChange={load} />
+        ) : (
+          <p className="muted">This creator isn't taking new subscribers right now.</p>
+        )}
+        {!user && (
+          <Connect
+            onDone={(u: User, w: ActiveWallet) => {
+              setWallet(w);
+              setUser(u);
+              loadAccount();
+            }}
+          />
+        )}
+      </div>
+    );
+  }
   const { call, live, stats, viewer } = detail;
   const trader = call.trader.handle ?? shortAddr(call.trader.address);
   const available = Number(account?.account.available_balance ?? 0);
@@ -81,6 +117,9 @@ export function CallPage({ code }: { code: string }) {
               rel="noreferrer"
             >
               Telegram
+            </a>
+            <a className="sharelink" href={`/verify?q=${call.code}`}>
+              Verify
             </a>
           </span>
         </div>

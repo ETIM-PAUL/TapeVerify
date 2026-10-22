@@ -109,11 +109,19 @@ export async function handleUpdate(
   if (c.cmd === "call") {
     const code = c.arg.replace(/[^A-Za-z0-9]/g, "");
     const r = await pool.query(
-      `SELECT k.short_code, k.symbol, k.side, k.leverage, k.entry_price, k.tp_price, k.sl_price, k.exit_price, k.exit_reason, k.status, u.handle, u.address
+      `SELECT k.short_code, k.symbol, k.side, k.leverage, k.entry_price, k.tp_price, k.sl_price, k.exit_price, k.exit_reason, k.status, k.premium, k.public_at_ms, u.handle, u.address
          FROM calls k JOIN users u ON u.id = k.user_id WHERE k.short_code = $1`,
       [code],
     );
     if (!r.rows[0]) return void (await say("No call with that code."));
+    if (
+      r.rows[0].premium &&
+      r.rows[0].status !== "closed" &&
+      (r.rows[0].public_at_ms === null || Number(r.rows[0].public_at_ms) > now)
+    )
+      return void (await say(
+        "That's a premium call for subscribers. Open it on TapeVerify to subscribe.",
+      ));
     const call: PostCall = postCall(r.rows[0]);
     const followUrl = `${urls.web.replace(/\/$/, "")}/call/${call.code}`;
     const event = r.rows[0].status === "closed" ? "closed" : "opened";

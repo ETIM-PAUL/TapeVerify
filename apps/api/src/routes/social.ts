@@ -3,6 +3,7 @@ import { vaultEligibility } from "@tapeverify/shared";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { AppDeps } from "../app.js";
+import { activeSubscriptions, lockedNow } from "../lock.js";
 import { findTrader, scoreAccount } from "../traders/service.js";
 import { verifyFor } from "../verify.js";
 
@@ -89,15 +90,15 @@ export function socialRoutes(app: FastifyInstance, d: AppDeps) {
     if (followingOnly && !viewer) return { events: [], next: null, scope: q.scope };
     const before = q.before ?? Date.now() + MIN;
     const who = followingOnly
-      ? "AND c.user_id IN (SELECT trader_id FROM trader_follows WHERE follower_id = $3)"
+      ? `AND c.user_id IN (SELECT trader_id FROM trader_follows WHERE follower_id = $3 UNION SELECT creator_id FROM subscriptions WHERE subscriber_id = $3 AND ends_ms > ${Date.now()})`
       : "";
     const whoT = followingOnly
-      ? "AND u.id IN (SELECT trader_id FROM trader_follows WHERE follower_id = $3)"
+      ? `AND u.id IN (SELECT trader_id FROM trader_follows WHERE follower_id = $3 UNION SELECT creator_id FROM subscriptions WHERE subscriber_id = $3 AND ends_ms > ${Date.now()})`
       : "";
     const args = followingOnly ? [before, q.limit * 2, viewer!.id] : [before, q.limit * 2];
 
     const calls = await d.pool.query(
-      `SELECT c.id, c.short_code, c.symbol, c.side, c.leverage, c.status, c.entry_price, c.entry_ts_ms, c.exit_price, c.exit_ts_ms, c.exit_reason,
+      `SELECT c.id, c.short_code, c.symbol, c.side, c.leverage, c.status, c.entry_price, c.entry_ts_ms, c.exit_price, c.exit_ts_ms, c.exit_reason, c.premium, c.public_at_ms,
               u.id AS uid, u.handle, u.chain, u.address,
               (SELECT count(*) FROM call_comments m WHERE m.call_id = c.id) AS comments
          FROM calls c JOIN users u ON u.id = c.user_id
@@ -106,7 +107,7 @@ export function socialRoutes(app: FastifyInstance, d: AppDeps) {
       args,
     );
     const closedCalls = await d.pool.query(
-      `SELECT c.id, c.short_code, c.symbol, c.side, c.leverage, c.status, c.entry_price, c.entry_ts_ms, c.exit_price, c.exit_ts_ms, c.exit_reason,
+      `SELECT c.id, c.short_code, c.symbol, c.side, c.leverage, c.status, c.entry_price, c.entry_ts_ms, c.exit_price, c.exit_ts_ms, c.exit_reason, c.premium, c.public_at_ms,
               u.id AS uid, u.handle, u.chain, u.address,
               (SELECT count(*) FROM call_comments m WHERE m.call_id = c.id) AS comments
          FROM calls c JOIN users u ON u.id = c.user_id
@@ -126,7 +127,21 @@ export function socialRoutes(app: FastifyInstance, d: AppDeps) {
       name: r.handle ?? short(r.address),
       chain: r.chain,
     });
-    const callView = (r: Record<string, unknown>) => ({
+    const subs = await activeSubscriptions(d.pool, viewer?.id);
+    const hidden = (r: Record<string, unknown>) =>
+      lockedNow({
+        user_id: String(r.uid),
+        premium: Boolean(r.premium),
+        status: String(r.status),
+        public_at_ms: r.public_at_ms === null ? null : String(r.public_at_ms),
+      }) &&
+      viewer?.id !== r.uid &&
+      !subs.has(String(r.uid));
+    const callView = (r: Record<string, unknown>) =>
+      hidden(r)
+        ? { code: r.short_code, symbol: r.symbol, locked: true, comments: Number(r.comments) }
+        : callViewOpen(r);
+    const callViewOpen = (r: Record<string, unknown>) => ({
       code: r.short_code,
       symbol: r.symbol,
       side: r.side,

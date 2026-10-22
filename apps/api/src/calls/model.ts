@@ -32,6 +32,8 @@ export interface CallRow {
   realized_pnl: string | null;
   fail_reason: string | null;
   close_requested_at: string | null;
+  premium: boolean;
+  public_at_ms: string | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -75,6 +77,8 @@ export function publicCall(r: CallRow, trader: Trader, shareUrl: string, now = D
         }
       : null,
     failReason: r.fail_reason,
+    premium: r.premium,
+    publicAt: r.public_at_ms === null ? null : Number(r.public_at_ms),
     trader: { handle: trader.handle, chain: trader.chain, address: trader.address },
   };
 }
@@ -156,5 +160,21 @@ export function followView(r: FollowRow) {
       : null,
     failReason: r.fail_reason,
     createdAt: r.created_at.getTime(),
+  };
+}
+
+/** What anyone sees of a premium call that is still locked: that it exists, who made it, and nothing about the trade. */
+export function lockedCall(r: CallRow, trader: Trader, shareUrl: string, now = Date.now()) {
+  return {
+    id: r.id,
+    code: r.short_code,
+    url: `${shareUrl.replace(/\/$/, "")}/c/${r.short_code}`,
+    status: r.status === "open" && now >= Number(r.expires_at) ? "expired" : r.status,
+    symbol: r.symbol,
+    premium: true,
+    locked: true,
+    publicAt: r.public_at_ms === null ? null : Number(r.public_at_ms),
+    createdAt: r.created_at.getTime(),
+    trader: { handle: trader.handle, chain: trader.chain, address: trader.address },
   };
 }

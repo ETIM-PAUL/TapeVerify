@@ -76,6 +76,8 @@ export interface Call {
     realizedPnl: string | null;
   } | null;
   failReason: string | null;
+  premium?: boolean;
+  publicAt?: number | null;
   trader: { handle: string | null; chain: string; address: string };
 }
 export interface MarketInfo {
@@ -152,6 +154,10 @@ export interface FollowInfo {
   trader?: string;
 }
 export interface CallDetail {
+  /** A premium call the viewer hasn't unlocked: `call` then holds only the teaser. */
+  locked?: boolean;
+  creator?: string;
+  plan?: { priceUsdc: string; periodDays: number } | null;
   call: Call;
   live: LiveView | null;
   stats: TraderStats;
@@ -305,11 +311,12 @@ export interface Profile {
   calls: Array<{
     code: string;
     symbol: string;
-    side: string;
-    leverage: number;
+    locked?: boolean;
+    side?: string;
+    leverage?: number;
     status: string;
-    entry: { price: string } | null;
-    exit: { price: string; reason: string | null; realizedPnl: string | null } | null;
+    entry?: { price: string } | null;
+    exit?: { price: string; reason: string | null; realizedPnl: string | null } | null;
     createdAt: number;
   }>;
   followers: { count: number; notionalFollowed: string };
@@ -631,11 +638,12 @@ export interface FeedEvent {
   call?: {
     code: string;
     symbol: string;
-    side: "long" | "short";
-    leverage: number;
-    entryPrice: string;
-    exitPrice: string | null;
-    exitReason: string | null;
+    locked?: boolean;
+    side?: "long" | "short";
+    leverage?: number;
+    entryPrice?: string;
+    exitPrice?: string | null;
+    exitReason?: string | null;
     comments: number;
   };
   trade?: {
@@ -754,3 +762,109 @@ export interface ReplayOut {
     liquidations: number;
   };
 }
+
+export interface PlanInfo {
+  creator: { ref: string; name: string };
+  plan: { priceUsdc: string; periodDays: number } | null;
+  subscribers: number;
+  premiumOpen: number;
+  viewer: { isSelf: boolean; subscribed: boolean; endsAt: number | null } | null;
+}
+export interface MyPlan {
+  plan: { priceUsdc: string; periodDays: number; payAddress: string; active: boolean } | null;
+  activeSubscribers: number;
+  subscribers: Array<{ name: string; endsAt: number; active: boolean }>;
+  revenueUsdc: string;
+  payments: number;
+  recent: Array<{ name: string; amountUsdc: string; at: number; signature: string }>;
+  network: string;
+}
+export interface SubIntent {
+  paymentId: string;
+  pay: {
+    address: string;
+    amountUsdc: string;
+    mint: string;
+    memo: string;
+    chain: string;
+    network: string;
+  };
+  periodDays: number;
+  expiresAt: number;
+  steps: string[];
+}
+export interface MySubscription {
+  ref: string;
+  name: string;
+  endsAt: number;
+  active: boolean;
+  premiumOpen: number;
+}
+
+export interface LookupCheck {
+  name: string;
+  ok: boolean;
+  detail?: string;
+}
+export type LookupOut =
+  | { type: "unknown"; message: string }
+  | {
+      type: "record";
+      recordId: number;
+      trader: string;
+      seq: number;
+      takenAt: number;
+      batched: boolean;
+    }
+  | {
+      type: "call";
+      locked: true;
+      trader: { ref: string; name: string };
+      code: string;
+      message: string;
+    }
+  | {
+      type: "call";
+      locked: false;
+      trader: { ref: string; name: string };
+      call: {
+        code: string;
+        symbol: string;
+        side: "long" | "short";
+        leverage: number;
+        status: string;
+        entry: { price: string; size: string | null; at: number | null } | null;
+        exit: { price: string; reason: string | null; at: number | null } | null;
+        resultPct: number | null;
+      };
+      checks: LookupCheck[];
+      fills: Array<{
+        leg: string;
+        id: string;
+        side: string;
+        price: string;
+        size: string;
+        role: string;
+        at: number;
+      }>;
+      entryFill: { basis: string; slippageBps: number | null; score: number | null } | null;
+      links: { call: string; trader: string };
+    }
+  | {
+      type: "batch";
+      batch: {
+        id: number;
+        v: number;
+        createdMs: number;
+        count: number;
+        merkleRoot: string;
+        batchHash: string;
+        prevHash: string | null;
+        signature: string;
+        signerKey: string;
+        anchor: { signature: string; cluster: string; memo: string } | null;
+      };
+      records: Array<{ id: number; seq: number; trader: string }>;
+      checks: LookupCheck[];
+      ok: boolean;
+    };

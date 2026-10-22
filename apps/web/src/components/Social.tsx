@@ -92,6 +92,14 @@ function EventRow({ e }: { e: FeedEvent }) {
   }
   const c = e.call;
   if (!c) return null;
+  if (c.locked) {
+    return (
+      <li>
+        {who} posted a <span className="premium-tag">subscribers only</span> call on{" "}
+        <a href={`/call/${c.code}`}>{c.symbol}</a> <span className="muted small">{ago(e.at)}</span>
+      </li>
+    );
+  }
   return (
     <li>
       {who} {e.kind === "call_opened" ? "opened" : "closed"}{" "}
