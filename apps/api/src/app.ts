@@ -10,6 +10,7 @@ import type { DraftFn } from "./ai/translate.js";
 import type { ApiConfig } from "./config.js";
 import { ReconnectRequiredError, type StrikeGateway } from "./gateway.js";
 import { accountRoutes } from "./routes/account.js";
+import { argusRoutes } from "./routes/argus.js";
 import { authRoutes } from "./routes/auth.js";
 import { backtestsRoutes } from "./routes/backtests.js";
 import { callsRoutes } from "./routes/calls.js";
@@ -47,6 +48,7 @@ export async function buildApp(
   const app = Fastify({
     logger: logger ? { redact: ["req.headers.cookie", "req.headers.authorization"] } : false,
     bodyLimit: 256 * 1024,
+    trustProxy: base.api.trustProxy,
   });
   await app.register(cors, { origin: base.api.webOrigin, credentials: true });
   await app.register(cookie);
@@ -99,5 +101,6 @@ export async function buildApp(
   backtestsRoutes(app, d);
   liveRoutes(app, d);
   marketRoutes(app, d);
+  argusRoutes(app, d);
   return app;
 }

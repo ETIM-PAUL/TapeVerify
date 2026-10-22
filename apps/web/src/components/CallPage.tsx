@@ -5,6 +5,7 @@ import { type ActiveWallet, useWallet } from "../wallet-context";
 import { Connect } from "./Connect";
 import { Deposit } from "./Deposit";
 import { FollowPanel } from "./FollowPanel";
+import { ReputationCard } from "./Reputation";
 
 const pct = (v: number | null) => (v === null ? "—" : `${v >= 0 ? "+" : ""}${v.toFixed(2)}%`);
 
@@ -146,6 +147,10 @@ export function CallPage({ code }: { code: string }) {
           From closed calls recorded off Strike's fills. Full verified profiles come next.
         </p>
       </div>
+
+      {detail.argus && (detail.argus.penalties.length > 0 || detail.argus.clean) && (
+        <ReputationCard argus={detail.argus} />
+      )}
 
       {!user ? (
         <Connect

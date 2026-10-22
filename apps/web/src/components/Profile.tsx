@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ApiError, api, type Profile as P, type Timeframe, type TradeRow } from "../api";
 import { duration, pctText, shortAddr, usd } from "../format";
+import { ReputationCard } from "./Reputation";
 
 function Curve({ points }: { points: P["curve"] }) {
   if (points.length < 2) return <p className="muted small">Not enough trades for a curve yet.</p>;
@@ -131,6 +132,8 @@ export function Profile({ ref_ }: { ref_: string }) {
           <option value="all">All time</option>
         </select>
       </div>
+
+      <ReputationCard argus={p.argus} />
 
       <div className="stats">
         <div className="stat">

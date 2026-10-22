@@ -6,6 +6,7 @@ import {
   StrikeGateway,
 } from "@pit/shared";
 import { getMarketSymbols, StrikeClient } from "@pit/strike-sdk";
+import { ArgusJob } from "./argus/job.js";
 import { CallTracker } from "./calls/tracker.js";
 import { loadWorkerConfig } from "./config.js";
 import { FillsIngester } from "./fills/ingest.js";
@@ -48,6 +49,11 @@ const depth = new DepthPoller(client, pool, cfg, symbols, log.child("depth"));
 const fills = new FillsIngester(client, pool, cfg, log.child("fills"));
 const calls = new CallTracker(client, pool, log.child("calls"));
 const earnings = new EarningsJob(pool, log.child("earnings"));
+const argus = new ArgusJob(
+  pool,
+  log.child("argus"),
+  Number(process.env.ARGUS_INTERVAL_SECONDS || 300) * 1000,
+);
 const paper = new PaperRunner(client, pool, log.child("paper"), {
   intervalMs: Number(process.env.PAPER_TICK_SECONDS || 10) * 1000,
   builderBps: strike.builderFeeBps,
@@ -83,6 +89,7 @@ depth.start();
 fills.start();
 calls.start();
 earnings.start();
+argus.start();
 paper.start();
 live?.start();
 
@@ -110,6 +117,7 @@ async function shutdown(signal: string) {
   fills.stop();
   calls.stop();
   earnings.stop();
+  argus.stop();
   paper.stop();
   live?.stop();
   await prices.stop();

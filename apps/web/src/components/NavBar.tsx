@@ -8,6 +8,7 @@ export function NavBar({ signedIn }: { signedIn: boolean }) {
       <a href="/market">Marketplace</a>
       <a href="/studio">Studio</a>
       {signedIn && <a href="/earnings">Earnings</a>}
+      {signedIn && <a href="/trust">Trust</a>}
       {signedIn && <a href="/">My account</a>}
     </nav>
   );

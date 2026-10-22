@@ -141,5 +141,5 @@ describe("fills ingestion", () => {
     ]);
     expect([Number(f.rows[0].n), Number(g.rows[0].n)]).toEqual([5, 3]);
     await pool.query("DELETE FROM users WHERE address LIKE 'fills-test-%'");
-  });
+  }, 30_000); // syncs every user in the shared test database, including rows other suites are using
 });

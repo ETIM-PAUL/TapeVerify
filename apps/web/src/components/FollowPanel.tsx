@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { api, type Call, type CallDetail, type FollowInfo, type LiveView } from "../api";
+import { ApiError, api, type Call, type CallDetail, type FollowInfo, type LiveView } from "../api";
 import { usd } from "../format";
 
 const BLOCKED: Record<string, string> = {
@@ -24,6 +24,11 @@ export function FollowPanel({
   const [margin, setMargin] = useState("50");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [flags, setFlags] = useState<Array<{
+    kind: string;
+    severity: string;
+    summary: string;
+  }> | null>(null);
   const [key, setKey] = useState(() => crypto.randomUUID());
   const mine: FollowInfo | null = detail.viewer?.follow ?? null;
 
@@ -47,14 +52,24 @@ export function FollowPanel({
   const m = Number(margin) || 0;
   const notional = m * call.leverage;
 
-  async function follow() {
+  async function follow(acceptRisk = false) {
     setError(null);
     setBusy(true);
     try {
-      await api.post(`/v1/calls/${call.code}/follow`, { marginUsd: margin, requestKey: key });
+      await api.post(`/v1/calls/${call.code}/follow`, {
+        marginUsd: margin,
+        requestKey: key,
+        ...(acceptRisk ? { acceptRisk: true } : {}),
+      });
       setKey(crypto.randomUUID());
+      setFlags(null);
       onFollowed();
     } catch (e) {
+      if (e instanceof ApiError && e.code === "caller_flagged") {
+        setFlags((e.data?.flags as typeof flags) ?? []);
+        setBusy(false);
+        return;
+      }
       setError((e as Error).message);
       onFollowed(); // refresh live state: the block reason may have changed
     } finally {
@@ -85,7 +100,7 @@ export function FollowPanel({
               onChange={(e) => setMargin(e.target.value)}
               placeholder="Margin (USD)"
             />
-            <button type="button" disabled={busy || !(m > 0)} onClick={follow}>
+            <button type="button" disabled={busy || !(m > 0)} onClick={() => follow()}>
               {busy ? "Placing…" : "Follow"}
             </button>
           </div>
@@ -94,6 +109,29 @@ export function FollowPanel({
             caller's.
           </p>
         </>
+      )}
+      {flags && (
+        <div className="stack">
+          <p className="warn">
+            Argus has flagged this caller. Following means copying someone with unresolved trust
+            concerns:
+          </p>
+          <ul className="warnlist">
+            {flags.map((f) => (
+              <li key={`${f.kind}-${f.summary}`}>
+                {f.severity}: {f.summary}
+              </li>
+            ))}
+          </ul>
+          <div className="row">
+            <button type="button" className="danger" disabled={busy} onClick={() => follow(true)}>
+              Follow anyway
+            </button>
+            <button type="button" onClick={() => setFlags(null)}>
+              Don't follow
+            </button>
+          </div>
+        </div>
       )}
       {error && <p className="error">{error}</p>}
     </div>

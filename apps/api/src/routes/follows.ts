@@ -15,6 +15,7 @@ import {
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { AppDeps } from "../app.js";
+import { seriousFlags } from "../argus.js";
 import { closeTracked } from "../calls/close.js";
 import { hasUnfinished } from "../calls/live.js";
 import { callWithTrader, type FollowRow, followView } from "../calls/model.js";
@@ -39,6 +40,8 @@ export function followsRoutes(app: FastifyInstance, d: AppDeps) {
       .object({
         marginUsd: z.string().regex(/^\d+(\.\d{1,2})?$/),
         requestKey: z.string().min(8).max(64).optional(),
+        /** Follow even though the caller has serious flags (the follower has read them). */
+        acceptRisk: z.boolean().optional(),
       })
       .parse(req.body);
 
@@ -60,6 +63,23 @@ export function followsRoutes(app: FastifyInstance, d: AppDeps) {
             ? { follow: followView(existing.rows[0]) }
             : { error: "You already followed this call", code: "already_following" },
         );
+    }
+
+    // Serious flags on the caller: say so first, and follow only if the follower has accepted the risk.
+    if (!body.acceptRisk) {
+      const flags = await seriousFlags(d.pool, call.user_id);
+      if (flags.length > 0) {
+        return reply.code(409).send({
+          error: "This caller has unresolved trust flags. Review them before following.",
+          code: "caller_flagged",
+          flags: flags.map((f) => ({
+            kind: f.kind,
+            severity: f.severity,
+            status: f.status,
+            summary: f.summary,
+          })),
+        });
+      }
     }
 
     const rules = (await d.gateway.marketRules(2000))[call.symbol];

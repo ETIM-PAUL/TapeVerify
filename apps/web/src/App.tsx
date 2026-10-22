@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, type User } from "./api";
 import { Account } from "./components/Account";
+import { ArgusAdmin } from "./components/ArgusAdmin";
 import { CallPage } from "./components/CallPage";
 import { Connect } from "./components/Connect";
 import { Earnings } from "./components/Earnings";
@@ -10,6 +11,7 @@ import { Market } from "./components/Market";
 import { NavBar } from "./components/NavBar";
 import { Profile } from "./components/Profile";
 import { Studio } from "./components/Studio";
+import { Trust } from "./components/Trust";
 import { type ActiveWallet, WalletContext } from "./wallet-context";
 
 export function App() {
@@ -39,8 +41,17 @@ export function App() {
   const listingId = path.match(/^\/market\/([0-9a-f-]{36})$/)?.[1];
   const isMarket = path === "/market";
   const isEarnings = path === "/earnings";
+  const isTrust = path === "/trust";
+  const isArgusAdmin = path === "/admin/argus";
   const publicPage = Boolean(
-    callCode || traderRef || isBoard || isStudio || listingId || isMarket || isEarnings,
+    callCode ||
+      traderRef ||
+      isBoard ||
+      isStudio ||
+      listingId ||
+      isMarket ||
+      isEarnings ||
+      isArgusAdmin,
   );
   if (!ready && !publicPage) return null;
   return (
@@ -59,6 +70,10 @@ export function App() {
           <Market />
         ) : isEarnings ? (
           <Earnings />
+        ) : isArgusAdmin ? (
+          <ArgusAdmin />
+        ) : isTrust && user ? (
+          <Trust />
         ) : isStudio ? (
           <Studio user={user} onUser={setUser} />
         ) : user ? (

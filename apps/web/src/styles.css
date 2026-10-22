@@ -323,3 +323,33 @@ label.check input {
   padding: 3px 0;
   border-bottom: 1px solid var(--line);
 }
+
+.badge {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 12px;
+  border: 1px solid var(--line);
+  white-space: nowrap;
+}
+.badge.clean {
+  color: var(--ok);
+  border-color: var(--ok);
+}
+.badge.review {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.badge.flag {
+  color: var(--err);
+  border-color: var(--err);
+}
+.penalties {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0;
+}
+.penalties li {
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+}

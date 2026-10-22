@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 import { api, type Leaderboard as LB, type MarketInfo, type Timeframe } from "../api";
 import { duration, pctText, shortAddr, usd } from "../format";
+import { TrustBadge } from "./Reputation";
 
 const SORTS = [
   ["return", "Return"],
   ["pnl", "PnL"],
   ["consistency", "Consistency"],
   ["winrate", "Win rate"],
+  ["reputation", "Reputation"],
 ] as const;
 
 export function Leaderboard() {
@@ -89,6 +91,8 @@ export function Leaderboard() {
                 <th>Trades</th>
                 <th>Avg hold</th>
                 <th>Risk</th>
+                <th>Rep</th>
+                <th>Trust</th>
               </tr>
             </thead>
             <tbody>
@@ -114,6 +118,10 @@ export function Leaderboard() {
                   <td>{e.stats.trades}</td>
                   <td>{duration(e.stats.avgHoldMs)}</td>
                   <td>{e.risk}</td>
+                  <td>{e.argus?.score ?? "—"}</td>
+                  <td>
+                    <TrustBadge argus={e.argus} />
+                  </td>
                 </tr>
               ))}
             </tbody>

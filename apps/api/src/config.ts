@@ -18,6 +18,10 @@ const schema = z.object({
   CREATOR_SHARE_BPS: z.coerce.number().int().min(0).max(10_000).default(5000),
   /** Origin of the share links (/c/<code>, /og/<code>.png). Same domain as the web app behind a proxy in production. */
   PUBLIC_SHARE_URL: z.string().default("http://localhost:3001"),
+  /** Salt for the hashed sign-in addresses Argus compares. Set a long random value in production. */
+  ARGUS_SALT: z.string().min(8).default("pit-dev-argus-salt"),
+  /** Trust X-Forwarded-For (only behind a proxy you control), so sign-ins record the real client address. */
+  TRUST_PROXY: z.enum(["true", "false"]).default("false"),
 });
 
 export interface ApiConfig {
@@ -33,6 +37,8 @@ export interface ApiConfig {
   adminToken: string | undefined;
   marketMinLiveTrades: number;
   creatorShareBps: number;
+  argusSalt: string;
+  trustProxy: boolean;
 }
 
 export function loadApiConfig(env: Record<string, string | undefined> = process.env): ApiConfig {
@@ -50,5 +56,7 @@ export function loadApiConfig(env: Record<string, string | undefined> = process.
     adminToken: e.ADMIN_TOKEN,
     marketMinLiveTrades: e.MARKETPLACE_MIN_LIVE_TRADES,
     creatorShareBps: e.CREATOR_SHARE_BPS,
+    argusSalt: e.ARGUS_SALT,
+    trustProxy: e.TRUST_PROXY === "true",
   };
 }

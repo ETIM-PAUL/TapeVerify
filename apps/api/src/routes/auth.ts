@@ -9,6 +9,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { normalizeAddress } from "../addresses.js";
 import type { AppDeps } from "../app.js";
+import { recordLogin } from "../argus.js";
 import { createSession, deleteSession } from "../sessions.js";
 
 const CHALLENGE_TTL_MS = 5 * 60_000;
@@ -130,6 +131,9 @@ export function authRoutes(app: FastifyInstance, d: AppDeps) {
       await client.query("COMMIT");
 
       const session = await createSession(d.pool, user.id, d.api.sessionTtlMs);
+      await recordLogin(d.pool, d.api.argusSalt, user.id, req.ip, req.headers["user-agent"]).catch(
+        () => {},
+      );
       reply.setCookie("pit_session", session.token, {
         httpOnly: true,
         sameSite: "lax",

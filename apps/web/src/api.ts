@@ -5,6 +5,7 @@ export class ApiError extends Error {
     readonly status: number,
     message: string,
     readonly code?: string,
+    readonly data?: Record<string, unknown>,
   ) {
     super(message);
   }
@@ -18,7 +19,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new ApiError(res.status, data.error ?? res.statusText, data.code);
+  if (!res.ok) throw new ApiError(res.status, data.error ?? res.statusText, data.code, data);
   return data as T;
 }
 
@@ -97,6 +98,38 @@ export interface LiveView {
     | { ok: true; driftBps: number }
     | { ok: false; reason: "not_open" | "expired" | "drifted"; driftBps?: number };
 }
+export interface ArgusInfo {
+  score: number;
+  performance: number;
+  confidence: number;
+  clean: boolean;
+  cleanReasons: string[];
+  underReview: boolean;
+  worst: "low" | "medium" | "high" | "critical" | null;
+  penalties: Array<{
+    kind: string;
+    severity: string;
+    status: string;
+    summary: string;
+    points: number;
+  }>;
+}
+export interface ArgusFinding {
+  id: string;
+  kind: string;
+  severity: string;
+  status: string;
+  summary: string;
+  detectedAt: number;
+  reviewNote: string | null;
+  canAppeal: boolean;
+  appeal: { status: string; message: string; decisionNote: string | null } | null;
+}
+export interface MyArgus {
+  reputation: ArgusInfo | null;
+  findings: ArgusFinding[];
+  history: Array<{ ts: number; score: number; previous: number | null; reason: string }>;
+}
 export interface TraderStats {
   calls: number;
   closed: number;
@@ -122,6 +155,7 @@ export interface CallDetail {
   call: Call;
   live: LiveView | null;
   stats: TraderStats;
+  argus: ArgusInfo | null;
   viewer: { isOwner: boolean; follow: FollowInfo | null } | null;
 }
 
@@ -151,6 +185,7 @@ export interface LeaderEntry {
   stats: StatsOut;
   volume: string;
   risk: "low" | "medium" | "high" | "unknown";
+  argus: ArgusInfo | null;
 }
 export interface Leaderboard {
   timeframe: Timeframe;
@@ -177,6 +212,7 @@ export interface TradeRow {
 }
 export interface Profile {
   trader: { ref: string; handle: string | null; chain: string; address: string };
+  argus: ArgusInfo | null;
   stats: StatsOut;
   volume: string;
   risk: LeaderEntry["risk"];

@@ -11,10 +11,12 @@
     "replay": "tsx --env-file-if-exists=../../.env src/cli/replay.ts",
     "coverage": "tsx --env-file-if-exists=../../.env src/cli/coverage.ts",
     "backfill": "tsx --env-file-if-exists=../../.env src/cli/backfill.ts",
+    "argus": "tsx --env-file-if-exists=../../.env src/cli/argus.ts",
     "stats": "tsx --env-file-if-exists=../../.env src/cli/stats.ts",
     "emergency": "tsx --env-file-if-exists=../../.env src/cli/emergency.ts"
   },
   "dependencies": {
+    "@pit/argus": "workspace:*",
     "@pit/shared": "workspace:*",
     "@pit/strike-sdk": "workspace:*",
     "pg": "^8.23.1",

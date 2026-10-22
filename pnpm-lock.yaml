@@ -193,6 +193,9 @@ importers:
       '@fastify/rate-limit':
         specifier: ^11.2.1
         version: 11.2.1
+      '@pit/argus':
+        specifier: workspace:*
+        version: link:../../packages/argus
       '@pit/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -260,6 +263,9 @@ importers:
 
   apps/workers:
     dependencies:
+      '@pit/argus':
+        specifier: workspace:*
+        version: link:../../packages/argus
       '@pit/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -286,7 +292,18 @@ importers:
         specifier: ^4.23.15
         version: 4.23.15
 
-  packages/argus: {}
+  packages/argus:
+    dependencies:
+      '@pit/shared':
+        specifier: workspace:*
+        version: link:../shared
+      pg:
+        specifier: ^8.23.1
+        version: 8.23.1
+    devDependencies:
+      '@types/pg':
+        specifier: ^8.23.1
+        version: 8.23.1
 
   packages/shared:
     dependencies:

@@ -2,6 +2,7 @@ import { RANK_MINIMUMS, type Timeframe } from "@pit/shared";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { AppDeps } from "../app.js";
+import { argusFor } from "../argus.js";
 import {
   findTrader,
   type ScoredTrader,
@@ -27,12 +28,13 @@ const handleSchema = z
   .regex(/^[A-Za-z0-9_]{3,20}$/, "3-20 letters, numbers or underscores")
   .refine((h) => !RESERVED.has(h.toLowerCase()), "That handle is reserved");
 
-const SORTS = {
+const SORTS: Record<string, (s: ScoredTrader) => number | null> = {
   return: (s: ScoredTrader) => s.stats.totalReturnPct,
   pnl: (s: ScoredTrader) => Number(s.stats.netPnl),
   consistency: (s: ScoredTrader) => s.stats.consistency,
   winrate: (s: ScoredTrader) => s.stats.winRate,
-} as const;
+  reputation: () => null, // replaced per request: it needs the stored reputation
+};
 
 const lbQuery = z.object({
   timeframe: z.enum(TIMEFRAMES).default("30d"),
@@ -41,7 +43,7 @@ const lbQuery = z.object({
     .regex(/^[A-Z0-9]{2,10}-USD$/)
     .optional(),
   risk: z.enum(["low", "medium", "high"]).optional(),
-  sort: z.enum(["return", "pnl", "consistency", "winrate"]).default("return"),
+  sort: z.enum(["return", "pnl", "consistency", "winrate", "reputation"]).default("return"),
   limit: z.coerce.number().int().min(1).max(100).default(25),
   offset: z.coerce.number().int().min(0).default(0),
   includeUnranked: z.enum(["0", "1"]).default("0"),
@@ -94,12 +96,24 @@ export function tradersRoutes(app: FastifyInstance, d: AppDeps) {
         q.market,
       );
       const all = scored.filter((s) => s.stats.trades > 0);
-      const pick = SORTS[q.sort];
+      const rep = await argusFor(
+        d.pool,
+        rows.map((r) => r.id),
+      );
+      const repOf = new Map(rows.map((r) => [`${r.chain}:${r.address}`, rep.get(r.id) ?? null]));
+      const argusOf = (s: ScoredTrader) => repOf.get(`${s.chain}:${s.address}`) ?? null;
+      const pick =
+        q.sort === "reputation"
+          ? (s: ScoredTrader) => argusOf(s)?.score ?? null
+          : (SORTS[q.sort] as (s: ScoredTrader) => number | null);
       const ranked = all
         .filter((s) => s.rankedOut === null && (!q.risk || s.risk === q.risk))
         .sort((a, b) => (pick(b) ?? -Infinity) - (pick(a) ?? -Infinity))
-        .map((s, i) => ({ rank: i + 1, ...s }));
-      const unranked = q.includeUnranked === "1" ? all.filter((s) => s.rankedOut !== null) : [];
+        .map((s, i) => ({ rank: i + 1, ...s, argus: argusOf(s) }));
+      const unranked =
+        q.includeUnranked === "1"
+          ? all.filter((s) => s.rankedOut !== null).map((s) => ({ ...s, argus: argusOf(s) }))
+          : [];
       const body = {
         timeframe: q.timeframe,
         market: q.market ?? "all",
@@ -150,6 +164,7 @@ export function tradersRoutes(app: FastifyInstance, d: AppDeps) {
       trader: { ref: scored.ref, handle: t.handle, chain: t.chain, address: t.address },
       timeframe: q.timeframe,
       market: q.market ?? "all",
+      argus: (await argusFor(d.pool, [t.userId])).get(t.userId) ?? null,
       stats: scored.stats,
       volume: scored.volume,
       risk: scored.risk,
