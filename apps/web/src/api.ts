@@ -49,3 +49,39 @@ export interface StrikeTx {
   timestamp: number;
   tx_hash?: string;
 }
+
+export type CallStatus = "pending" | "open" | "expired" | "closed" | "failed";
+export interface Call {
+  id: string;
+  code: string;
+  url: string;
+  status: CallStatus;
+  symbol: string;
+  side: "long" | "short";
+  leverage: number;
+  size: string;
+  tpPrice: string | null;
+  slPrice: string | null;
+  expiresAt: number;
+  maxDriftBps: number;
+  createdAt: number;
+  entry: { price: string; ts: number | null; fee: string | null } | null;
+  exit: {
+    price: string;
+    ts: number | null;
+    reason: string | null;
+    realizedPnl: string | null;
+  } | null;
+  failReason: string | null;
+  trader: { handle: string | null; chain: string; address: string };
+}
+export interface MarketInfo {
+  symbol: string;
+  baseAsset: string;
+  mark: string;
+  minSize: string;
+  stepSize: string;
+  minNotional: string;
+  tick: string;
+  maxLeverage: number;
+}

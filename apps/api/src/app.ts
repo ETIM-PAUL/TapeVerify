@@ -10,6 +10,7 @@ import type { ApiConfig } from "./config.js";
 import { ReconnectRequiredError, type StrikeGateway } from "./gateway.js";
 import { accountRoutes } from "./routes/account.js";
 import { authRoutes } from "./routes/auth.js";
+import { callsRoutes } from "./routes/calls.js";
 import { fundsRoutes } from "./routes/funds.js";
 import { type SessionUser, userForSession } from "./sessions.js";
 
@@ -71,5 +72,6 @@ export async function buildApp(base: Omit<AppDeps, "requireUser">, logger = fals
   authRoutes(app, d);
   accountRoutes(app, d);
   fundsRoutes(app, d);
+  callsRoutes(app, d);
   return app;
 }

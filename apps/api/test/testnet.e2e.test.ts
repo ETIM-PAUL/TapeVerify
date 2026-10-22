@@ -146,4 +146,37 @@ describe("Strike testnet through Pit's API", () => {
     });
     expect(res.account_id).toBe(viaPit);
   }, 90_000);
+
+  it("validates a call against Strike's real market rules, then stops at the balance check (unfunded)", async () => {
+    const priv = ed.utils.randomPrivateKey();
+    const address = base58.encode(ed.getPublicKey(priv));
+    const cookie = await connect("solana", address, async (m) =>
+      base58.encode(ed.sign(new TextEncoder().encode(m), priv)),
+    );
+    const rules = (await gateway.marketRules())["BTC-USD"] as { mark_price: string };
+    const mark = Number(rules.mark_price);
+    const call = {
+      symbol: "BTC-USD",
+      side: "long",
+      size: "0.0013",
+      leverage: 5,
+      tpPrice: String(Math.round(mark * 1.05)),
+      slPrice: String(Math.round(mark * 0.95)),
+    };
+    const ok = await app.inject({
+      method: "POST",
+      url: "/v1/calls",
+      headers: { cookie },
+      payload: call,
+    });
+    expect(ok.statusCode, ok.body).toBe(400);
+    expect(ok.json().code).toBe("insufficient_balance"); // passed every market rule; no money to trade with
+    const tiny = await app.inject({
+      method: "POST",
+      url: "/v1/calls",
+      headers: { cookie },
+      payload: { ...call, size: "0.00001" },
+    });
+    expect(tiny.json().code).toBe("bad_size"); // under Strike's $100 minimum order value
+  }, 90_000);
 });

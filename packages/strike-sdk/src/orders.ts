@@ -40,8 +40,30 @@ export const placeStrategyOrder = (
 
 export const cancelOrder = (
   c: StrikeClient,
-  req: { order_id?: string; client_order_id?: string },
+  req: { symbol: string; order_id?: number; client_order_id?: string },
 ) => c.delete<Json>("/v2/order/cancel", req);
 
 export const cancelAllOrders = (c: StrikeClient, symbol?: string) =>
   c.delete<Json>("/v2/order/cancel-all", symbol ? { symbol } : {});
+
+/** Per-symbol leverage (1..125, capped by the market's tier). Applies to the whole account for that symbol. */
+export const setLeverage = (c: StrikeClient, symbol: string, leverage: number) =>
+  c.post<{ leverage: number; maxNotionalValue: string; symbol: string; request_id: string }>(
+    "/v2/leverage",
+    {
+      symbol,
+      leverage,
+    },
+  );
+
+/** Market close of the whole position: opposite side, reduce-only. */
+export const closePositionOrder = (
+  c: StrikeClient,
+  p: { symbol: string; side: "buy" | "sell"; size: string; client_order_id?: string },
+  feeBps?: number,
+) =>
+  c.post<Json>(
+    "/v2/order",
+    { ...p, type: "market", reduce_only: true, close_position: true },
+    { headers: c.builderFeeHeaders(feeBps) },
+  );

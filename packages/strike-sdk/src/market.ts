@@ -155,3 +155,30 @@ export interface L3Update {
 
 export const getL3Snapshot = (c: StrikeClient, symbol: string) =>
   c.publicGet<L3Snapshot>(`/v2/l3/snapshot?symbol=${encodeURIComponent(symbol)}`);
+
+/** Per-market trading rules from `/v2/markets` (decimals are strings). */
+export interface MarketRules {
+  symbol: string;
+  base_asset: string;
+  status: string;
+  reduce_only: boolean;
+  default_leverage: number;
+  margin_tiers: Array<{
+    max_notional: string;
+    max_leverage: number;
+    maintenance_margin_rate: string;
+  }>;
+  order_tick_price: string;
+  order_min_price: string;
+  order_max_price: string;
+  order_market_step_size: string;
+  order_market_min_size: string;
+  order_market_max_size: string;
+  order_min_notional: string;
+  trigger_protect?: string;
+  mark_price: string;
+  [k: string]: unknown;
+}
+
+export const getMarketRules = async (c: StrikeClient): Promise<Record<string, MarketRules>> =>
+  (await c.publicGet<{ markets: Record<string, MarketRules> }>("/v2/markets")).markets;

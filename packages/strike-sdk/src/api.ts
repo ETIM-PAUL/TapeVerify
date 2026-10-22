@@ -105,3 +105,77 @@ export async function getAccountFunding(
   const r = await c.publicGet<{ funding: StrikeFunding[] | null }>(`/v2/history/funding?${p}`);
   return r.funding ?? [];
 }
+
+export interface StrikeOrder {
+  id: number;
+  client_order_id: string;
+  account_id: string;
+  symbol: string;
+  strategy_id?: string;
+  is_primary?: boolean;
+  close_reason?: string;
+  error_message?: string;
+  side: "buy" | "sell";
+  status: "pending" | "open" | "filled" | "canceled" | "untriggered" | "rejected" | "expired";
+  type: string;
+  auto_close_type?: string;
+  size: string;
+  filled: string;
+  price: string;
+  stop_price: string;
+  create_timestamp: number;
+  entry_timestamp: number;
+  event_timestamp: number;
+}
+
+/** Public order history by account id (newest first). Rejections appear here with `error_message`. */
+export async function getAccountOrders(
+  c: StrikeClient,
+  accountId: string,
+  q: { symbol?: string; limit?: number } = {},
+): Promise<StrikeOrder[]> {
+  const p = new URLSearchParams({ account_id: accountId, limit: String(q.limit ?? 100) });
+  if (q.symbol) p.set("symbol", q.symbol);
+  const r = await c.publicGet<{ orders: StrikeOrder[] | null }>(`/v2/history/order?${p}`);
+  return r.orders ?? [];
+}
+
+/** Fills of one order (public). */
+export async function getOrderFills(
+  c: StrikeClient,
+  accountId: string,
+  orderId: number,
+): Promise<StrikeFill[]> {
+  const p = new URLSearchParams({
+    account_id: accountId,
+    order_id: String(orderId),
+    limit: "1000",
+  });
+  const r = await c.publicGet<{ fills: StrikeFill[] | null }>(`/v2/history/fill?${p}`);
+  return r.fills ?? [];
+}
+
+export interface StrikePosition {
+  id: number;
+  symbol: string;
+  /** Signed size in base units (non-zero when open). */
+  size: string;
+  entry_price: string;
+  leverage: number;
+  margin_mode: string;
+  liquidation_price: string;
+  upnl: string;
+  create_timestamp: number;
+}
+
+/** Open positions by account id (public). */
+export async function getAccountPositions(
+  c: StrikeClient,
+  accountId: string,
+  symbol?: string,
+): Promise<StrikePosition[]> {
+  const p = new URLSearchParams({ account_id: accountId });
+  if (symbol) p.set("symbol", symbol);
+  const r = await c.publicGet<{ positions: StrikePosition[] | null }>(`/v2/positions?${p}`);
+  return (r.positions ?? []).filter((x) => Number(x.size) !== 0);
+}

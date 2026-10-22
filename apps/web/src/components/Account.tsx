@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
-import { type AccountData, ApiError, api, type StrikeTx, type User } from "../api";
+import { type AccountData, ApiError, api, type Call, type StrikeTx, type User } from "../api";
 import { shortAddr, usd } from "../format";
 import { Deposit } from "./Deposit";
 import { History } from "./History";
+import { MyCalls } from "./MyCalls";
+import { NewCall } from "./NewCall";
 import { Withdraw } from "./Withdraw";
 
 export function Account({
@@ -16,16 +18,19 @@ export function Account({
 }) {
   const [data, setData] = useState<AccountData | null>(null);
   const [txs, setTxs] = useState<StrikeTx[]>([]);
+  const [calls, setCalls] = useState<Call[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
-      const [a, t] = await Promise.all([
+      const [a, t, c] = await Promise.all([
         api.get<AccountData>("/v1/account"),
         api.get<{ transactions: StrikeTx[] }>("/v1/transactions"),
+        api.get<{ calls: Call[] }>("/v1/calls"),
       ]);
       setData(a);
       setTxs(t.transactions);
+      setCalls(c.calls);
       setError(null);
     } catch (e) {
       if (e instanceof ApiError && e.code === "reconnect_required") return onExpired();
@@ -84,6 +89,10 @@ export function Account({
         ) : (
           <p className="muted">No open positions.</p>
         )}
+      </div>
+      <div className="grid2">
+        <NewCall onCreated={load} />
+        <MyCalls calls={calls} onChange={load} />
       </div>
       <div className="grid2">
         <Deposit chain={user.chain} address={user.address} onDone={load} />

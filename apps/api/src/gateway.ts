@@ -1,5 +1,5 @@
 import { type KeyVault, type SealedSecret, type StrikeConfig } from "@pit/shared";
-import { StrikeApiError, StrikeClient } from "@pit/strike-sdk";
+import { getMarketRules, type MarketRules, StrikeApiError, StrikeClient } from "@pit/strike-sdk";
 import type pg from "pg";
 
 export class ReconnectRequiredError extends Error {
@@ -14,6 +14,7 @@ export class ReconnectRequiredError extends Error {
  */
 export class StrikeGateway {
   private offset: number | null = null;
+  private rulesCache: { at: number; rules: Record<string, MarketRules> } | null = null;
 
   constructor(
     private readonly pool: pg.Pool,
@@ -39,6 +40,14 @@ export class StrikeGateway {
       return this.anon();
     }
     return c;
+  }
+
+  /** Market rules from `/v2/markets`, cached briefly (mark prices in it are a snapshot). */
+  async marketRules(maxAgeMs = 5000): Promise<Record<string, MarketRules>> {
+    if (this.rulesCache && Date.now() - this.rulesCache.at < maxAgeMs) return this.rulesCache.rules;
+    const rules = await getMarketRules(await this.anon());
+    this.rulesCache = { at: Date.now(), rules };
+    return rules;
   }
 
   async clientFor(userId: string): Promise<StrikeClient> {

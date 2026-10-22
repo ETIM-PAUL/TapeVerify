@@ -16,7 +16,6 @@ export interface ConnectedWallet {
   signMessage(message: string, payloadIsHex?: boolean): Promise<string>;
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: injected wallet APIs are untyped
 type Untyped = any;
 export type EvmWallet = ConnectedWallet & { chain: "ethereum"; provider: Untyped };
 export type SolanaWallet = ConnectedWallet & { chain: "solana"; provider: Untyped };

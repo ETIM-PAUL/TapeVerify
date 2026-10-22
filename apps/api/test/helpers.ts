@@ -45,6 +45,43 @@ export function fakeStrike(overrides: Record<string, Handler> = {}) {
         api_wallet_expired_at: "9999-12-31T23:59:59Z",
       },
     }),
+    "GET /v2/markets": () => ({
+      body: {
+        markets: {
+          "BTC-USD": {
+            symbol: "BTC-USD",
+            base_asset: "BTC",
+            status: "trading",
+            reduce_only: false,
+            default_leverage: 20,
+            margin_tiers: [
+              { max_notional: "300000", max_leverage: 150 },
+              { max_notional: "800000", max_leverage: 100 },
+            ],
+            order_tick_price: "0.10",
+            order_min_price: "0.10",
+            order_max_price: "0",
+            order_market_step_size: "0.00001",
+            order_market_min_size: "0.00001",
+            order_market_max_size: "120",
+            order_min_notional: "100",
+            mark_price: "80000",
+          },
+        },
+      },
+    }),
+    "POST /v2/leverage": (c) => ({ body: { leverage: c.body?.leverage, symbol: c.body?.symbol } }),
+    "POST /v2/order/strategy": (c) => ({
+      status: 201,
+      body: {
+        strategy_id: c.body?.strategy_id,
+        primary_client_order_id: c.body?.client_order_id,
+        tp_client_order_id: "tp-cid",
+        sl_client_order_id: "sl-cid",
+      },
+    }),
+    "POST /v2/order": (c) => ({ status: 201, body: { client_order_id: c.body?.client_order_id } }),
+    "DELETE /v2/order/cancel": () => ({ body: { order_id: 1 } }),
     "GET /v2/account": () => ({
       body: { account_id: "acct-1", wallet_balance: "100", available_balance: "90" },
     }),

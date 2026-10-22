@@ -1,5 +1,6 @@
 import { createPool, loadStrikeConfig } from "@pit/shared";
 import { getMarketSymbols, StrikeClient } from "@pit/strike-sdk";
+import { CallTracker } from "./calls/tracker.js";
 import { loadWorkerConfig } from "./config.js";
 import { FillsIngester } from "./fills/ingest.js";
 import { L3Recorder } from "./l3/recorder.js";
@@ -36,12 +37,14 @@ const prices = new PriceRecorder(strike.urls.priceWs, pool, symbols, cfg, log.ch
 const candles = new CandleIndexer(client, pool, cfg, symbols, log.child("candles"));
 const depth = new DepthPoller(client, pool, cfg, symbols, log.child("depth"));
 const fills = new FillsIngester(client, pool, cfg, log.child("fills"));
+const calls = new CallTracker(client, pool, log.child("calls"));
 
 for (const r of l3) await r.start();
 prices.start();
 candles.start();
 depth.start();
 fills.start();
+calls.start();
 
 const retention = setInterval(
   () =>
@@ -65,6 +68,7 @@ async function shutdown(signal: string) {
   candles.stop();
   depth.stop();
   fills.stop();
+  calls.stop();
   await prices.stop();
   await Promise.all(l3.map((r) => r.stop()));
   await pool.end();
