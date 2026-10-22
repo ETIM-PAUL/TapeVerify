@@ -4,6 +4,7 @@ import { Account } from "./components/Account";
 import { CallPage } from "./components/CallPage";
 import { Connect } from "./components/Connect";
 import { Earnings } from "./components/Earnings";
+import { Guardrails } from "./components/Guardrails";
 import { Leaderboard } from "./components/Leaderboard";
 import { ListingPage } from "./components/ListingPage";
 import { Market } from "./components/Market";
@@ -81,6 +82,8 @@ export function App() {
           <Feed signedIn={Boolean(user)} />
         ) : path === "/notifications" && user ? (
           <Notifications />
+        ) : path === "/guardrails" && user ? (
+          <Guardrails />
         ) : path === "/connections" && user ? (
           <Connections />
         ) : isHealth ? (

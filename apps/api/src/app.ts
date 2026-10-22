@@ -13,6 +13,7 @@ import { accountRoutes } from "./routes/account.js";
 import { authRoutes } from "./routes/auth.js";
 import { backtestsRoutes } from "./routes/backtests.js";
 import { callsRoutes } from "./routes/calls.js";
+import { copyRoutes } from "./routes/copy.js";
 import { followsRoutes } from "./routes/follows.js";
 import { fundsRoutes } from "./routes/funds.js";
 import { liveRoutes } from "./routes/live.js";
@@ -114,5 +115,6 @@ export async function buildApp(
   verifyRoutes(app, d);
   trustRoutes(app, d);
   socialRoutes(app, d);
+  copyRoutes(app, d);
   return app;
 }

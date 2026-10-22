@@ -16,6 +16,7 @@ const LINKS: Array<[string, string]> = [
 const MENU: Array<[string, string]> = [
   ["/", "My account"],
   ["/earnings", "Earnings"],
+  ["/guardrails", "Copy guardrails"],
   ["/connections", "Connections"],
   ["/trust", "Trust record"],
 ];

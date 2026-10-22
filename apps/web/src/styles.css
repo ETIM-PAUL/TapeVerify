@@ -760,3 +760,53 @@ label.check input {
 .neg {
   color: var(--err);
 }
+
+.narrow-page {
+  max-width: 760px;
+}
+.headline {
+  font-size: 18px;
+  line-height: 1.45;
+  margin: 0 0 6px;
+  max-width: 70ch;
+}
+label.inline {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+}
+input.short {
+  width: 88px;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+.unit {
+  align-self: center;
+}
+
+.guardnote {
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--raised);
+}
+.guardnote .warnlist {
+  margin: 6px 0;
+}
+
+a.sharelink {
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+}
+a.sharelink:hover {
+  color: var(--text);
+  border-color: var(--line-strong);
+  background: var(--raised);
+}

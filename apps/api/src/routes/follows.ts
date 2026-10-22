@@ -18,6 +18,7 @@ import type { AppDeps } from "../app.js";
 import { closeTracked } from "../calls/close.js";
 import { hasUnfinished } from "../calls/live.js";
 import { callWithTrader, type FollowRow, followView } from "../calls/model.js";
+import { evaluateGuardrails, loadGuardrails } from "../copy.js";
 import { seriousFlags } from "../verify.js";
 
 const FOLLOW_ERRORS = {
@@ -66,8 +67,17 @@ export function followsRoutes(app: FastifyInstance, d: AppDeps) {
     }
 
     // Serious flags on the caller: say so first, and follow only if the follower has accepted the risk.
-    if (!body.acceptRisk) {
+    const mine = await loadGuardrails(d.pool, user.id);
+    if (!body.acceptRisk || mine.requireCleanCaller) {
       const flags = await seriousFlags(d.pool, call.user_id);
+      if (flags.length > 0 && mine.requireCleanCaller) {
+        return reply.code(409).send({
+          error:
+            "This caller has unresolved trust flags, and your guardrails don't allow copying them.",
+          code: "guardrail_blocked",
+          guard: { code: "caller_flagged" },
+        });
+      }
       if (flags.length > 0) {
         return reply.code(409).send({
           error: "This caller has unresolved trust flags. Review them before following.",
@@ -108,9 +118,33 @@ export function followsRoutes(app: FastifyInstance, d: AppDeps) {
       });
     }
 
+    // The follower's own limits: block the copy, or shrink it, and say which.
+    const guarded = await evaluateGuardrails(
+      d.pool,
+      user.id,
+      call,
+      mark,
+      f.driftBps ?? 0,
+      Number(body.marginUsd),
+    );
+    if (!guarded.result.ok) {
+      return reply.code(409).send({
+        error: guarded.result.reason,
+        code: "guardrail_blocked",
+        guard: { code: guarded.result.code },
+      });
+    }
+    // keep exactly what the follower typed unless a guardrail changed it
+    const marginUsd =
+      guarded.result.marginUsd === Number(body.marginUsd)
+        ? body.marginUsd
+        : guarded.result.marginUsd.toFixed(2);
+    const lev = guarded.result.leverage;
+    const adjustments = guarded.result.adjustments;
+
     const size = sizeFromMargin(
-      body.marginUsd,
-      call.leverage,
+      marginUsd,
+      lev,
       mark,
       rules.order_market_min_size,
       rules.order_market_step_size,
@@ -122,7 +156,7 @@ export function followsRoutes(app: FastifyInstance, d: AppDeps) {
     const check = validateCallOrder(rules as unknown as MarketRulesLite, {
       side: call.side,
       size,
-      leverage: call.leverage,
+      leverage: lev,
       tpPrice: call.tp_price ?? undefined,
       slPrice: call.sl_price ?? undefined,
     });
@@ -138,7 +172,7 @@ export function followsRoutes(app: FastifyInstance, d: AppDeps) {
       async (c) =>
         [await getAccount(c), await getAccountPositions(c, accountId, call.symbol)] as const,
     );
-    const margin = Number(check.notional) / call.leverage;
+    const margin = Number(check.notional) / lev;
     if (Number(account.available_balance) < margin) {
       return reply.code(400).send({
         error: `Not enough available balance: this needs about $${margin.toFixed(2)} of margin and you have $${Number(account.available_balance).toFixed(2)}`,
@@ -168,8 +202,8 @@ export function followsRoutes(app: FastifyInstance, d: AppDeps) {
           body.requestKey ?? null,
           call.symbol,
           call.side,
-          call.leverage,
-          body.marginUsd,
+          lev,
+          marginUsd,
           check.size,
           check.tpPrice ?? null,
           check.slPrice ?? null,
@@ -192,7 +226,7 @@ export function followsRoutes(app: FastifyInstance, d: AppDeps) {
 
     try {
       const placed = await d.gateway.run(user.id, async (c) => {
-        await setLeverage(c, call.symbol, call.leverage);
+        await setLeverage(c, call.symbol, lev);
         return placeStrategyOrder(
           c,
           {
@@ -239,7 +273,7 @@ export function followsRoutes(app: FastifyInstance, d: AppDeps) {
       throw e;
     }
     const { rows } = await d.pool.query("SELECT * FROM follows WHERE id = $1", [id]);
-    return reply.code(201).send({ follow: followView(rows[0] as FollowRow) });
+    return reply.code(201).send({ follow: followView(rows[0] as FollowRow), adjustments });
   });
 
   app.get("/v1/follows", { preHandler: d.requireUser }, async (req) => {

@@ -8,6 +8,7 @@ import {
   type TradeRow,
 } from "../api";
 import { duration, pctText, shortAddr, usd } from "../format";
+import { ReplayCard } from "./Replay";
 import { ReputationCard } from "./Reputation";
 import { FollowTrader } from "./Social";
 import { FairBadge, RecordsCard } from "./Trust13";
@@ -165,6 +166,8 @@ export function Profile({ ref_ }: { ref_: string }) {
       </div>
 
       <ReputationCard verify={p.verify} />
+
+      <ReplayCard ref_={ref_} signedIn={Boolean(p.viewer)} />
 
       <div className="stats">
         <div className="stat">

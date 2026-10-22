@@ -1,5 +1,13 @@
-import { useState } from "react";
-import { ApiError, api, type Call, type CallDetail, type FollowInfo, type LiveView } from "../api";
+import { useEffect, useState } from "react";
+import {
+  ApiError,
+  api,
+  type Call,
+  type CallDetail,
+  type FollowInfo,
+  type FollowPreview,
+  type LiveView,
+} from "../api";
 import { usd } from "../format";
 
 const BLOCKED: Record<string, string> = {
@@ -31,6 +39,24 @@ export function FollowPanel({
   }> | null>(null);
   const [key, setKey] = useState(() => crypto.randomUUID());
   const mine: FollowInfo | null = detail.viewer?.follow ?? null;
+  const [preview, setPreview] = useState<FollowPreview | null>(null);
+  const following = Boolean(mine);
+
+  // What the person's own limits would do to this copy, shown before they press Follow.
+  useEffect(() => {
+    const m = Number(margin);
+    if (following || !(m > 0)) {
+      setPreview(null);
+      return;
+    }
+    const t = setTimeout(() => {
+      api
+        .post<FollowPreview>(`/v1/calls/${call.code}/follow/preview`, { marginUsd: margin })
+        .then(setPreview)
+        .catch(() => setPreview(null));
+    }, 350);
+    return () => clearTimeout(t);
+  }, [margin, call.code, following]);
 
   if (mine) {
     return (
@@ -50,7 +76,9 @@ export function FollowPanel({
 
   const blocked = live && !live.followable.ok ? live.followable : null;
   const m = Number(margin) || 0;
-  const notional = m * call.leverage;
+  const guard = preview?.guard;
+  const guardBlocked = guard?.ok === false;
+  const notional = guard?.ok ? guard.marginUsd * guard.leverage : m * call.leverage;
 
   async function follow(acceptRisk = false) {
     setError(null);
@@ -100,10 +128,50 @@ export function FollowPanel({
               onChange={(e) => setMargin(e.target.value)}
               placeholder="Margin (USD)"
             />
-            <button type="button" disabled={busy || !(m > 0)} onClick={() => follow()}>
+            <button
+              type="button"
+              disabled={busy || !(m > 0) || guardBlocked}
+              onClick={() => follow()}
+            >
               {busy ? "Placing…" : "Follow"}
             </button>
           </div>
+          {preview && guard && (
+            <div className={guardBlocked ? "banner" : "guardnote"}>
+              {guard.ok ? (
+                guard.adjustments.length > 0 ? (
+                  <div>
+                    <b>Your guardrails will change this copy:</b>
+                    <ul className="warnlist">
+                      {guard.adjustments.map((a) => (
+                        <li key={a}>{a}</li>
+                      ))}
+                    </ul>
+                    <span className="small muted">
+                      You'll copy with {usd(guard.marginUsd)} at {guard.leverage}x.{" "}
+                      <a href="/guardrails">Edit guardrails</a>
+                    </span>
+                  </div>
+                ) : (
+                  preview.guardrails.length > 0 && (
+                    <span className="small muted">
+                      Within your guardrails. <a href="/guardrails">Edit</a>
+                    </span>
+                  )
+                )
+              ) : (
+                <span>
+                  {guard.reason} <a href="/guardrails">Edit guardrails</a>
+                </span>
+              )}
+            </div>
+          )}
+          {preview && preview.guardrails.length === 0 && (
+            <p className="muted small">
+              No limits set. <a href="/guardrails">Set guardrails</a> to cap margin, leverage and
+              losses on every copy.
+            </p>
+          )}
           <p className="muted small">
             Position value ≈ {usd(notional)} at market. You enter at the live price, not the
             caller's.

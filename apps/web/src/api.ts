@@ -686,3 +686,71 @@ export interface VaultOut {
   steps: string[];
   note: string;
 }
+
+export interface GuardrailsData {
+  maxMarginUsd: number | null;
+  maxLossUsd: number | null;
+  maxLeverage: number | null;
+  maxDriftBps: number | null;
+  maxOpenCopies: number | null;
+  dailyLossLimitUsd: number | null;
+  requireCleanCaller: boolean;
+}
+export interface GuardrailsOut {
+  guardrails: GuardrailsData;
+  summary: string[];
+  recommended: GuardrailsData;
+  isSet: boolean;
+}
+export type GuardResultOut =
+  | { ok: true; marginUsd: number; leverage: number; adjustments: string[] }
+  | { ok: false; code: string; reason: string };
+export interface FollowPreview {
+  followable: boolean;
+  guard: GuardResultOut;
+  guardrails: string[];
+  requested: { marginUsd: string; leverage: number };
+}
+export interface ReplayRowOut {
+  code: string;
+  symbol: string;
+  side: "long" | "short";
+  leverage: number;
+  entryTs: number;
+  copied: boolean;
+  skipReason: string | null;
+  adjustments: string[];
+  marginUsd: number;
+  leverageUsed: number;
+  netPnl: number;
+  fees: number;
+  slippageCost: number;
+  liquidated: boolean;
+  callerReturnPct: number;
+  yourReturnPct: number | null;
+}
+export interface ReplayOut {
+  params: { calls: number; marginUsd: number; entrySlippageBps: number; exitSlippageBps: number };
+  guardrails: string[];
+  assumptions: string[];
+  caveats: string[];
+  measuredFollowers: number;
+  rows: ReplayRowOut[];
+  curve: Array<{ t: number; equity: number }>;
+  summary: {
+    considered: number;
+    copied: number;
+    skipped: number;
+    netPnl: number;
+    fees: number;
+    slippageCost: number;
+    marginDeployed: number;
+    returnOnMarginPct: number | null;
+    winRate: number | null;
+    maxDrawdownUsd: number;
+    worstCall: number | null;
+    callerAvgReturnPct: number | null;
+    yourAvgReturnPct: number | null;
+    liquidations: number;
+  };
+}

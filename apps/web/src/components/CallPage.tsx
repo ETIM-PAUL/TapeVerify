@@ -70,6 +70,19 @@ export function CallPage({ code }: { code: string }) {
           <span className="pill">
             {call.status === "expired" ? "follow window over" : call.status}
           </span>
+          <span className="row">
+            <a className="sharelink" href={shareLinks(call).x} target="_blank" rel="noreferrer">
+              Share on X
+            </a>
+            <a
+              className="sharelink"
+              href={shareLinks(call).telegram}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Telegram
+            </a>
+          </span>
         </div>
         <p className="muted">
           by {trader} · {call.trader.chain}
@@ -193,4 +206,13 @@ export function CallPage({ code }: { code: string }) {
       <Comments code={code} signedIn={Boolean(user)} />
     </div>
   );
+}
+
+/** Free share links: the sharer's own X or Telegram opens with the post filled in, and the preview card comes from the link. */
+function shareLinks(call: { symbol: string; side: string; leverage: number; url: string }) {
+  const text = `${call.side.toUpperCase()} ${call.symbol} ${call.leverage}x on TapeVerify`;
+  return {
+    x: `https://x.com/intent/post?text=${encodeURIComponent(text)}&url=${encodeURIComponent(call.url)}`,
+    telegram: `https://t.me/share/url?url=${encodeURIComponent(call.url)}&text=${encodeURIComponent(text)}`,
+  };
 }
