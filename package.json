@@ -17,7 +17,8 @@
     "db:down": "docker compose down",
     "db:migrate": "pnpm --filter @tapeverify/api db:migrate",
     "db:seed": "pnpm --filter @tapeverify/api db:seed",
-    "indexer": "pnpm --filter @tapeverify/workers start"
+    "indexer": "pnpm --filter @tapeverify/workers start",
+    "start": "sh scripts/railway-start.sh"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.0.0",

@@ -132,6 +132,7 @@ export function subscriptionsRoutes(app: FastifyInstance, d: AppDeps) {
       viewer: viewer
         ? {
             isSelf: viewer.id === c.id,
+            chain: (viewer as { chain?: string }).chain ?? null,
             subscribed: Boolean(mine && Number(mine.ends_ms) > now),
             endsAt: mine ? Number(mine.ends_ms) : null,
           }
@@ -272,12 +273,10 @@ export function subscriptionsRoutes(app: FastifyInstance, d: AppDeps) {
     if (chain === "cardano") {
       const mark = Number((await d.gateway.marketRules())["ADA-USD"]?.mark_price);
       if (!(mark > 0))
-        return reply
-          .code(503)
-          .send({
-            error: "The ADA price isn't available right now. Try again shortly.",
-            code: "no_rate",
-          });
+        return reply.code(503).send({
+          error: "The ADA price isn't available right now. Try again shortly.",
+          code: "no_rate",
+        });
       rate = mark;
     }
 
@@ -440,6 +439,12 @@ export function subscriptionsRoutes(app: FastifyInstance, d: AppDeps) {
               recipient: pay.pay_address,
               baseUnits: BigInt(pay.pay_amount),
               notBeforeMs: Number(pay.created_ms),
+              ...(req.user!.chain === "ethereum"
+                ? {
+                    payer: req.user!.address,
+                    minBaseUnits: usdcToBaseUnits(String(pay.amount_usdc)),
+                  }
+                : {}),
             },
             d.fetchImpl ?? fetch,
           );

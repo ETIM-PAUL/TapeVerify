@@ -2,12 +2,35 @@ import { useCallback, useEffect, useState } from "react";
 import {
   ApiError,
   api,
+  type Chain,
   type MyPlan,
   type MySubscription,
   type PlanInfo,
   type SubIntent,
 } from "../api";
 import { usd } from "../format";
+
+const CHAIN_NAME: Record<Chain, string> = {
+  solana: "Solana",
+  ethereum: "Ethereum",
+  cardano: "Cardano",
+};
+const CHAIN_ASSET: Record<Chain, string> = { solana: "USDC", ethereum: "USDC", cardano: "ADA" };
+
+const networkLabel = (chain: Chain, network: string) => {
+  const main = network === "mainnet";
+  return chain === "solana"
+    ? main
+      ? "mainnet"
+      : "devnet"
+    : chain === "ethereum"
+      ? main
+        ? "mainnet"
+        : "Sepolia"
+      : main
+        ? "mainnet"
+        : "preprod";
+};
 
 const day = (t: number) =>
   new Date(t).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
@@ -30,7 +53,7 @@ function Copy({ text, label }: { text: string; label: string }) {
   );
 }
 
-/** Subscribe to a creator: start a payment, pay from any Solana wallet, then paste the transaction signature. */
+/** Subscribe to a creator: pick a chain they accept, pay from any wallet on it, then paste the transaction ID. */
 export function SubscribeCard({
   creator,
   signedIn,
@@ -45,6 +68,7 @@ export function SubscribeCard({
   const [info, setInfo] = useState<PlanInfo | null>(null);
   const [intent, setIntent] = useState<SubIntent | null>(null);
   const [sig, setSig] = useState("");
+  const [picked, setPicked] = useState<Chain | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const load = useCallback(() => {
@@ -58,12 +82,21 @@ export function SubscribeCard({
   if (!info?.plan || info.viewer?.isSelf) return null;
   const { plan } = info;
   const active = info.viewer?.subscribed;
+  const chains = plan.chains?.length ? plan.chains : (["solana"] as Chain[]);
+  // Default to the chain the person signed in with, when the creator accepts it.
+  const viewerChain = info.viewer?.chain;
+  const chain: Chain =
+    picked && chains.includes(picked)
+      ? picked
+      : viewerChain && chains.includes(viewerChain)
+        ? viewerChain
+        : (chains[0] as Chain);
 
   async function start() {
     setBusy(true);
     setErr(null);
     try {
-      setIntent(await api.post<SubIntent>(`/v1/creators/${creator}/subscribe`));
+      setIntent(await api.post<SubIntent>(`/v1/creators/${creator}/subscribe`, { chain }));
     } catch (e) {
       setErr(
         e instanceof ApiError && e.status === 401 ? "Sign in to subscribe." : (e as Error).message,
@@ -108,46 +141,79 @@ export function SubscribeCard({
         </div>
       </div>
       {!intent && (
-        <div className="row">
-          <button type="button" disabled={busy} onClick={start}>
-            {active ? "Renew" : "Subscribe"}
-          </button>
-          <span className="muted small">
-            {info.subscribers} subscriber{info.subscribers === 1 ? "" : "s"} · paid in USDC on
-            Solana, straight to the creator
-          </span>
+        <div className="stack">
+          {chains.length > 1 && (
+            <div className="chips" role="group" aria-label="Pay on">
+              {chains.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  className={`chip ${c === chain ? "on" : ""}`}
+                  aria-pressed={c === chain}
+                  onClick={() => setPicked(c)}
+                >
+                  Pay on {CHAIN_NAME[c]} ({CHAIN_ASSET[c]})
+                </button>
+              ))}
+            </div>
+          )}
+          <div className="row">
+            <button type="button" disabled={busy} onClick={start}>
+              {active ? "Renew" : "Subscribe"}
+            </button>
+            <span className="muted small">
+              {info.subscribers} subscriber{info.subscribers === 1 ? "" : "s"} · paid in{" "}
+              {CHAIN_ASSET[chain]} on {CHAIN_NAME[chain]}, straight to the creator
+            </span>
+          </div>
         </div>
       )}
       {intent && (
         <div className="stack">
           <ol className="warnlist">
             <li>
-              Send <b>{intent.pay.amountUsdc} USDC</b> on Solana (
-              {intent.pay.network === "mainnet" ? "mainnet" : "devnet"}) to:
+              Send {intent.pay.exact ? <b>exactly </b> : null}
+              <b>
+                {intent.pay.amount} {intent.pay.asset}
+              </b>{" "}
+              on {CHAIN_NAME[intent.pay.chain]} (
+              {networkLabel(intent.pay.chain, intent.pay.network)}) to:
               <div className="row mono">
                 <code>{intent.pay.address}</code>
                 <Copy text={intent.pay.address} label="address" />
+                {intent.pay.exact && <Copy text={intent.pay.amount} label="amount" />}
               </div>
+              {intent.pay.exact && (
+                <span className="muted small">
+                  The last digits are a tag that matches the payment to you. Don't round the amount.
+                  {intent.pay.asset === "ADA" &&
+                    ` That is ${usd(intent.pay.amountUsdc)} at today's ADA price.`}
+                </span>
+              )}
             </li>
+            {intent.pay.memo && (
+              <li>
+                Add this memo so we can match the payment to you:
+                <div className="row mono">
+                  <code>{intent.pay.memo}</code>
+                  <Copy text={intent.pay.memo} label="memo" />
+                </div>
+              </li>
+            )}
             <li>
-              Add this memo so we can match the payment to you:
-              <div className="row mono">
-                <code>{intent.pay.memo}</code>
-                <Copy text={intent.pay.memo} label="memo" />
-              </div>
-            </li>
-            <li>
-              Paste the transaction signature here. We check it on the chain; TapeVerify never holds
-              your payment.
+              Paste the transaction {intent.pay.chain === "solana" ? "signature" : "ID"} here. We
+              check it on the chain; TapeVerify never holds your payment.
             </li>
           </ol>
           <div className="row">
             <input
               value={sig}
               onChange={(e) => setSig(e.target.value)}
-              placeholder="Transaction signature"
+              placeholder={
+                intent.pay.chain === "solana" ? "Transaction signature" : "Transaction hash"
+              }
               spellCheck={false}
-              aria-label="Transaction signature"
+              aria-label="Transaction ID"
             />
             <button type="button" disabled={busy || sig.trim().length < 64} onClick={confirm}>
               {busy ? "Checking…" : "I've paid"}
@@ -156,9 +222,29 @@ export function SubscribeCard({
               Cancel
             </button>
           </div>
+          {intent.pay.network !== "mainnet" && (
+            <p className="warn small">
+              Test payment: this is {networkLabel(intent.pay.chain, intent.pay.network)}, so use
+              test funds, not real money.{" "}
+              {intent.pay.chain === "cardano" ? (
+                <a
+                  href="https://developers.cardano.org/docs/integrate-cardano/testnet-faucet"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Get test ADA
+                </a>
+              ) : (
+                <a href="https://faucet.circle.com" target="_blank" rel="noreferrer">
+                  Get test USDC
+                </a>
+              )}
+              .
+            </p>
+          )}
           <p className="muted small">
-            Not showing up yet? Give the network a few seconds and try again. This payment reference
-            is good for an hour.
+            Not showing up yet? Give the network a minute and try again. This payment is good for an
+            hour.
           </p>
         </div>
       )}
@@ -174,6 +260,8 @@ function PlanEditor() {
   const [price, setPrice] = useState("10");
   const [days, setDays] = useState("30");
   const [address, setAddress] = useState("");
+  const [ethAddress, setEthAddress] = useState("");
+  const [adaAddress, setAdaAddress] = useState("");
   const [active, setActive] = useState(true);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -186,7 +274,9 @@ function PlanEditor() {
         if (r.plan) {
           setPrice(r.plan.priceUsdc);
           setDays(String(r.plan.periodDays));
-          setAddress(r.plan.payAddress);
+          setAddress(r.plan.payAddress ?? "");
+          setEthAddress(r.plan.ethAddress ?? "");
+          setAdaAddress(r.plan.adaAddress ?? "");
           setActive(r.plan.active);
         }
       })
@@ -201,7 +291,9 @@ function PlanEditor() {
       await api.put("/v1/me/plan", {
         priceUsdc: Number(price),
         periodDays: Number(days),
-        payAddress: address.trim(),
+        payAddress: address.trim() || null,
+        ethAddress: ethAddress.trim() || null,
+        adaAddress: adaAddress.trim() || null,
         active,
       });
       setMsg("Saved.");
@@ -217,9 +309,10 @@ function PlanEditor() {
       <div className="card stack">
         <h2>Your subscription</h2>
         <p className="muted small">
-          Subscribers pay you directly in USDC on Solana. TapeVerify never holds the money and takes
-          no cut. Subscribers see your subscribers-only calls while they're open; every call becomes
-          public, with its result, once it closes.
+          Subscribers pay you directly, in USDC on Solana or Ethereum or in ADA on Cardano: add an
+          address for each chain you want to accept. ADA is priced from the current ADA-USD price.
+          TapeVerify never holds the money and takes no cut. Subscribers see your subscribers-only
+          calls while they're open; every call becomes public, with its result, once it closes.
         </p>
         <div className="formgrid">
           <label>
@@ -232,7 +325,7 @@ function PlanEditor() {
           </label>
         </div>
         <label>
-          Your Solana address (where payments go)
+          Solana address (USDC)
           <input
             value={address}
             onChange={(e) => setAddress(e.target.value)}
@@ -240,6 +333,27 @@ function PlanEditor() {
             spellCheck={false}
           />
         </label>
+        <label>
+          Ethereum address (USDC)
+          <input
+            value={ethAddress}
+            onChange={(e) => setEthAddress(e.target.value)}
+            placeholder="0x…"
+            spellCheck={false}
+          />
+        </label>
+        <label>
+          Cardano address (ADA)
+          <input
+            value={adaAddress}
+            onChange={(e) => setAdaAddress(e.target.value)}
+            placeholder="addr1… (addr_test1… on testnet)"
+            spellCheck={false}
+          />
+        </label>
+        <p className="muted small">
+          Leave a chain empty to not accept payment on it. Add at least one.
+        </p>
         <label className="check">
           <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} />
           Open for new subscribers

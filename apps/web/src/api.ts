@@ -792,13 +792,25 @@ export interface ReplayOut {
 
 export interface PlanInfo {
   creator: { ref: string; name: string };
-  plan: { priceUsdc: string; periodDays: number } | null;
+  plan: { priceUsdc: string; periodDays: number; chains: Chain[] } | null;
   subscribers: number;
   premiumOpen: number;
-  viewer: { isSelf: boolean; subscribed: boolean; endsAt: number | null } | null;
+  viewer: {
+    isSelf: boolean;
+    chain: Chain | null;
+    subscribed: boolean;
+    endsAt: number | null;
+  } | null;
 }
 export interface MyPlan {
-  plan: { priceUsdc: string; periodDays: number; payAddress: string; active: boolean } | null;
+  plan: {
+    priceUsdc: string;
+    periodDays: number;
+    payAddress: string | null;
+    ethAddress: string | null;
+    adaAddress: string | null;
+    active: boolean;
+  } | null;
   activeSubscribers: number;
   subscribers: Array<{ name: string; endsAt: number; active: boolean }>;
   revenueUsdc: string;
@@ -811,9 +823,14 @@ export interface SubIntent {
   pay: {
     address: string;
     amountUsdc: string;
+    /** What to send, in the asset below (for ADA this differs from the USD price). */
+    amount: string;
+    asset: "USDC" | "ADA";
+    /** Ethereum and Cardano payments must match this amount exactly: it identifies the payer. */
+    exact: boolean;
     mint: string;
-    memo: string;
-    chain: string;
+    memo: string | null;
+    chain: Chain;
     network: string;
   };
   periodDays: number;

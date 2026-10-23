@@ -7,6 +7,12 @@ export interface EvmPaymentExpectation {
   /** Exactly this many base units: the amount carries a tag that ties the payment to the person who started it. */
   baseUnits: bigint;
   notBeforeMs: number;
+  /**
+   * The subscriber's own signed-in Ethereum address. A transfer from it is already tied to them, so it only needs
+   * to cover the price (`minBaseUnits`): the exact tagged amount is then not required.
+   */
+  payer?: string;
+  minBaseUnits?: bigint;
 }
 
 export type EvmPaymentCheck =
@@ -85,7 +91,12 @@ export async function verifyErc20Payment(
       code: "wrong_recipient",
       message: "That transaction didn't send USDC to the creator's address.",
     };
-  if (!transfers.some((l) => BigInt(l.data) === want.baseUnits))
+  const fromPayer = (l: (typeof transfers)[number]) =>
+    want.payer !== undefined &&
+    want.minBaseUnits !== undefined &&
+    l.topics[1]?.toLowerCase() === pad32(want.payer) &&
+    BigInt(l.data) >= want.minBaseUnits;
+  if (!transfers.some((l) => BigInt(l.data) === want.baseUnits || fromPayer(l)))
     return {
       ok: false,
       code: "wrong_amount",

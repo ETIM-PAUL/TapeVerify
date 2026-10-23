@@ -1,57 +1,211 @@
 # TapeVerify
 
-The social trading network for Strike where every record is proven and followers can't be exploited.
+**Social trading where every track record is proven, and followers can't be exploited.**
 
-Traders publish calls and run strategies on [Strike Finance](https://docs.strikefinance.org). Every closed trade becomes a signed record, chained into batches whose hash is anchored on Solana, so anyone can check a track record without trusting TapeVerify. Followers copy calls and strategies with guardrails, and the builder fee on each order is the product's revenue.
+TapeVerify lets traders post trades as shareable calls and lets anyone copy them with their own money on Strike. Every result is rebuilt from Strike's public fills, signed and anchored on Solana, so a follower can check a trader's record in their own browser instead of trusting a screenshot.
 
-## Built on Strike
+Built for the Strike Hackathon on Strike Finance's Builder Codes API.
 
-TapeVerify is built on Strike's Builder Codes API. The request signing, builder-connect, deposit/withdraw and user-stream flows in `packages/strike-sdk` follow Strike's reference implementation, [strike-finance/strike-builder-reference](https://github.com/strike-finance/strike-builder-reference), re-implemented for Node with retries, clock sync, reconnecting streams and an encrypted key vault.
+## Contents
 
-## What's in it
+- [The problem](#the-problem)
+- [The solution](#the-solution)
+- [Features](#features)
+- [How it uses Strike](#how-it-uses-strike)
+- [How verification works](#how-verification-works)
+- [Architecture](#architecture)
+- [Getting started](#getting-started)
+- [Try it](#try-it)
+- [Testing](#testing)
+- [Security](#security)
+- [Roadmap](#roadmap)
 
-- **Calls and copying**: publish a call with a share link, followers copy it with their own margin, a drift limit and guardrails.
-- **Strategies**: templates or plain English to a validated spec, backtests on Strike's fees, paper trading, and live trading behind strict safety rules.
-- **Verify**: front-running, self/wash-trading and sybil detectors; reputation and clean record; fair-fill scores; signed, chained, Solana-anchored batches; a public verifier that re-checks a record in the browser.
-- **Marketplace and creators**: list verified strategies, creator subscriptions paid in USDC, premium calls.
-- **Social**: Telegram bot and X posting driven by an outbox.
+## The problem
 
-## Layout
+Copy trading runs on trust it hasn't earned:
 
-- `apps/web`: React app
-- `apps/api`: Fastify API (auth, wallets, calls, follows, strategies, verify, subscriptions)
-- `apps/workers`: indexer, live and paper runners, trust engine jobs, CLIs
-- `apps/bots`: Telegram and X
-- `packages/strike-sdk`: typed Strike client
-- `packages/shared`: config, key vault, strategy engine, trading maths
-- `packages/verify`: trust engine
+- **Track records can't be checked.** They are screenshots or numbers in a platform's database that can be edited quietly.
+- **Leaderboards are gamed.** Wash trades and throwaway accounts inflate volume and win rates.
+- **Followers get exploited.** A trader can open a position, wait for followers to pile in, then exit into their buying.
+- **Copying is all or nothing.** Most copy trading mirrors every trade, inside a single exchange.
 
-## Develop
+## The solution
 
-```sh
-cp .env.example .env     # then set VAULT_KEK_HEX (openssl rand -hex 32)
-pnpm install
-pnpm db:up && pnpm db:migrate
-pnpm lint && pnpm typecheck && pnpm test
+TapeVerify replaces "trust us" with a record anyone can verify:
+
+- **Results come from the exchange, not the trader.** Every trade is rebuilt from Strike's public fills and linked to the exact fills behind it.
+- **History can't be rewritten.** Records are signed, hash-chained, batched into a Merkle tree and anchored on Solana. Changing one breaks the chain.
+- **You check it, not us.** The verifier runs in your browser and queries Solana directly.
+- **Abuse is detected.** Wash trading, fake followers, front-running and bad fills are flagged with published thresholds.
+- **Copy one trade at a time.** Followers choose which calls to copy, with their own margin and limits.
+
+TapeVerify earns only the builder fee on orders that actually trade, capped at what each user approved.
+
+## Features
+
+| Feature | What it does |
+|---|---|
+| **Calls** | Open a position on Strike and get a share link with a live preview card for X and Telegram |
+| **Copying** | Follow a call with your own margin, a price-drift limit and personal guardrails |
+| **Strategy studio** | Describe a strategy in plain English or start from a template, backtest it with Strike's real fees, paper trade it, then run it live |
+| **Live trading** | Per-run margin and loss caps, stop-losses that live on Strike, an emergency stop, and no re-sending of an order with an unclear outcome |
+| **Verified records** | Signed, hash-chained trader records anchored on Solana, checked in the browser |
+| **Trust engine** | Detects wash trading, fake followers, front-running of followers and poor fills, with a reputation penalty and an appeal path |
+| **Marketplace** | Strategies with a live record can be listed and cloned into the buyer's own budget, earning the creator a share of the fee |
+| **Subscriptions** | Creators sell early access to calls, paid straight to them in USDC on Solana or Ethereum, or in ADA on Cardano |
+| **Social** | Feed, leaderboard, comments, notifications, and posting to Telegram and X |
+| **Multi-chain onboarding** | Sign in and fund your Strike account from a Solana, Ethereum or Cardano wallet |
+
+## How it uses Strike
+
+| Strike capability | How TapeVerify uses it |
+|---|---|
+| **Builder connect** | Users approve a builder fee cap from their own wallet. TapeVerify holds a trade-only API wallet that cannot withdraw |
+| **Builder fee** | Every call, copy and live-strategy order carries `X-Builder-Fee-Bps`, capped at the lower of the configured fee and what the user approved |
+| **Strategy orders** | `/v2/order/strategy` places the entry with its take-profit and stop-loss attached, so exits live on Strike |
+| **Public fill history** | The source of truth for every trade, stat and leaderboard rank |
+| **Order book and L3 data** | Each fill is scored against the order book at that moment |
+| **Deposits and withdrawals** | Quotes and transactions for Solana, Ethereum and Cardano wallets |
+| **Markets, mark prices, klines** | The call form, backtester, live runner and price ticker |
+| **Vaults** | The protocol vault powers the "Strike healthy" badge |
+
+Real calls have been opened, filled and closed through TapeVerify on Strike's testnet.
+
+## How verification works
+
+```
+Strike fills ──► trades (linked to the fills behind them)
+                    │
+                    ▼
+      record  = stats + digest of every closed trade + hash of the previous record
+      hash    = sha256("tape-record:" + canonical JSON), signed with Ed25519
+                    │
+                    ▼
+      batch   = Merkle tree over record hashes, chained to the previous batch, signed
+                    │
+                    ▼
+      Solana memo   tape1:<batch id>:<batch hash>
+                    │
+                    ▼
+      Your browser re-checks the hash, signature, Merkle proof and Solana memo
 ```
 
-Run the pieces (each in its own terminal): `pnpm --filter @tapeverify/api dev`, `pnpm indexer`, `pnpm --filter @tapeverify/web dev`.
+Paste a call link, a record hash or a Solana transaction into the Verify page to check it.
 
-Useful commands:
+## Architecture
 
-| Command                                                         | What it does                                                    |
-| --------------------------------------------------------------- | --------------------------------------------------------------- |
-| `pnpm --filter @tapeverify/workers perf`                        | load tests (see `docs/LOAD.md`)                                 |
-| `pnpm --filter @tapeverify/workers vault:rotate [-- --dry-run]` | re-wrap stored wallet keys under the current key                |
-| `pnpm --filter @tapeverify/workers emergency`                   | stop every live run                                             |
-| `pnpm test:testnet`                                             | checks against the real Strike testnet (needs a funded account) |
+```
+ Browser (React) ─────────►  API (Fastify) ─────────►  Strike Builder Codes API
+   wallet sign-in              auth, calls, follows,       signed orders + fee header
+   in-browser verifier         strategies, payments        public fills, markets
+        ▲                            │
+        │                            ▼
+        │                       PostgreSQL ◄──── Workers
+        │                            ▲            indexer (order book, candles, fills)
+        │                            │            live and paper runners
+        └── checks records and       │            trust engine ──► signed batches ──► Solana
+            Solana anchors ──────────┘            bots (Telegram, X)
+```
 
-Configuration is in `.env.example`. Never commit `.env`: it holds the vault key, signing seeds and bot tokens.
+**Tech stack:** TypeScript, React, Vite, Fastify, PostgreSQL, Redis, pnpm workspaces, Vitest and Biome.
 
-## Docs
+| Path | Contents |
+|---|---|
+| `apps/web` | React app and the in-browser verifier |
+| `apps/api` | Fastify API |
+| `apps/workers` | Indexer, live and paper runners, trust jobs |
+| `apps/bots` | Telegram and X bots |
+| `packages/strike-sdk` | Typed Strike client: request signing, retries, clock sync, streams |
+| `packages/shared` | Config, key vault, strategy engine, trading maths, migrations |
+| `packages/verify` | Trust engine and record signing |
 
-`docs/` holds the architecture, Strike integration notes, trust-engine methodology, security review, risk disclaimers, load results and testing guide.
+## Getting started
 
-## Risk
+### Prerequisites
 
-Trading perpetual futures with leverage can lose all of the margin put into a position. Nothing here is financial advice. Verified records prove what happened; they don't predict what will.
+- Node.js 22 or newer
+- pnpm
+- Docker, for PostgreSQL and Redis
+
+### Install
+
+```sh
+git clone <repo-url> tapeverify && cd tapeverify
+cp .env.example .env     # set VAULT_KEK_HEX (openssl rand -hex 32) and BUILDER_CODE
+pnpm install
+pnpm db:up               # start PostgreSQL and Redis
+pnpm db:migrate          # create the database tables
+```
+
+### Run
+
+Start each service in its own terminal:
+
+```sh
+pnpm --filter @tapeverify/api dev     # API on http://localhost:3001
+pnpm indexer                          # background workers
+pnpm --filter @tapeverify/web dev     # web app on http://localhost:5173
+```
+
+Everything runs against Strike's testnet by default. To trade for real, set `STRIKE_NETWORK=mainnet` and `LIVE_ENABLED=true`.
+
+### Configuration
+
+All settings live in `.env`, and [.env.example](.env.example) documents every option. The main ones:
+
+| Variable | Purpose |
+|---|---|
+| `STRIKE_NETWORK` | `testnet` (default) or `mainnet` |
+| `BUILDER_CODE`, `BUILDER_FEE_BPS` | Your Strike builder code and the fee charged |
+| `DATABASE_URL`, `REDIS_URL` | PostgreSQL and Redis connections |
+| `VAULT_KEK_HEX`, `VAULT_KEK_ID` | Key that encrypts stored API wallets |
+| `PUBLIC_WEB_URL`, `PUBLIC_SHARE_URL` | Public addresses used in share links |
+| `OPENAI_API_KEY` | Enables plain-English strategy drafting |
+| `RECORD_SIGNING_SEED`, `ANCHOR_SOLANA_SEED` | Keys that sign records and anchor them on Solana |
+| `TELEGRAM_BOT_TOKEN`, `X_ACCESS_TOKEN` | Optional posting to Telegram and X |
+| `SUBSCRIPTIONS_ETH_RPC_URL`, `SUBSCRIPTIONS_KOIOS_URL` | Nodes that check Ethereum and Cardano subscription payments |
+
+## Try it
+
+1. **Connect.** Open the app, connect a Solana, Ethereum or Cardano wallet, and approve the builder fee.
+2. **Fund.** Deposit test funds into your Strike account from the Account page.
+3. **Post a call.** Pick a market, set size, leverage and exits, review the cost, and confirm. You get a share link.
+4. **Copy a call.** Open someone's call link, set your margin and follow it. Close your copy any time.
+5. **Verify.** Open a trader's record or a closed call and choose **Verify**. Your browser re-checks it.
+6. **Build a strategy.** In the Studio, describe a strategy, backtest it, and start a paper or live run.
+7. **Subscribe.** Open a creator's profile and pay for early access on the chain of your choice.
+
+## Testing
+
+```sh
+pnpm lint            # formatting and lint rules
+pnpm typecheck       # type-check every package
+pnpm test            # unit, integration and end-to-end tests
+pnpm test:testnet    # tests against the real Strike testnet
+pnpm --filter @tapeverify/workers perf    # load tests
+```
+
+The suite covers the live runner under failure (an outage with a position open, a rejected close, a restart mid-order), payment verification on all three chains, the record chain and verifier, and a full user journey.
+
+## Security
+
+- **Trade-only keys.** API wallets can place orders but cannot withdraw. Withdrawals always need the user's own wallet signature.
+- **Encrypted at rest.** Each API wallet key is encrypted with its own data key (AES-256-GCM), wrapped by a master key, and bound to the wallet it belongs to.
+- **Fee ceiling enforced on the server.** A user is never charged more than they approved.
+- **Payments never held.** Subscription payments go straight from subscriber to creator. TapeVerify only checks them on-chain.
+- **Web hardening.** Origin checks, rate limits on every public route, security headers and bounded sessions.
+
+## Roadmap
+
+- An API so other Strike builders can use the trust engine
+- Full matching-engine replay verification once Strike's node history is public
+- A mobile app
+- Portfolio-level and multi-asset strategies
+
+## Acknowledgements
+
+The request signing, builder-connect, deposit, withdraw and user-stream flows in `packages/strike-sdk` follow Strike's reference implementation, [strike-finance/strike-builder-reference](https://github.com/strike-finance/strike-builder-reference), re-implemented for Node.
+
+## Disclaimer
+
+Trading perpetual futures with leverage carries risk. Nothing here is financial advice.

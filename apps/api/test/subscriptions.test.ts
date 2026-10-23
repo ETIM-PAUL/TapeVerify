@@ -92,7 +92,7 @@ describe("a creator's plan", () => {
     expect((await j(t, "GET", `/v1/creators/${handle}/plan`)).json().plan).toBeNull();
     expect((await openPlan(t, creator.cookie, payAddress)).statusCode).toBe(200);
     const pub = (await j(t, "GET", `/v1/creators/${handle}/plan`)).json();
-    expect(pub.plan).toEqual({ priceUsdc: "10", periodDays: 30 });
+    expect(pub.plan).toEqual({ priceUsdc: "10", periodDays: 30, chains: ["solana"] });
     expect(JSON.stringify(pub)).not.toContain(payAddress);
     const mine = (await j(t, "GET", "/v1/me/plan", creator.cookie)).json();
     expect(mine.plan).toMatchObject({ priceUsdc: "10", periodDays: 30, payAddress, active: true });
