@@ -19,6 +19,7 @@ Built for the Strike Hackathon on Strike Finance's Builder Codes API.
 - [Testing](#testing)
 - [Security](#security)
 - [Roadmap](#roadmap)
+- [License](#license)
 
 ## The problem
 
@@ -205,6 +206,10 @@ The suite covers the live runner under failure (an outage with a position open, 
 ## Acknowledgements
 
 The request signing, builder-connect, deposit, withdraw and user-stream flows in `packages/strike-sdk` follow Strike's reference implementation, [strike-finance/strike-builder-reference](https://github.com/strike-finance/strike-builder-reference), re-implemented for Node.
+
+## License
+
+Released under the [MIT License](LICENSE).
 
 ## Disclaimer
 
