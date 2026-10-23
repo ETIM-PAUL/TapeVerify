@@ -101,6 +101,7 @@ export interface MarketInfo {
   stepSize: string;
   minNotional: string;
   tick: string;
+  minPrice: string;
   maxLeverage: number;
 }
 

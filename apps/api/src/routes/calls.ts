@@ -242,7 +242,13 @@ export function callsRoutes(app: FastifyInstance, d: AppDeps) {
     const rules = await d.gateway.marketRules();
     return {
       markets: Object.values(rules)
-        .filter((m) => m.status === "trading" && !m.reduce_only)
+        // A min price above the mark means no TP/SL can be placed; Strike drops those orders.
+        .filter(
+          (m) =>
+            m.status === "trading" &&
+            !m.reduce_only &&
+            Number(m.order_min_price) <= Number(m.mark_price),
+        )
         .map((m) => ({
           symbol: m.symbol,
           baseAsset: m.base_asset,
@@ -251,6 +257,7 @@ export function callsRoutes(app: FastifyInstance, d: AppDeps) {
           stepSize: m.order_market_step_size,
           minNotional: m.order_min_notional,
           tick: m.order_tick_price,
+          minPrice: m.order_min_price,
           maxLeverage: m.margin_tiers[0]?.max_leverage ?? 1,
         })),
     };

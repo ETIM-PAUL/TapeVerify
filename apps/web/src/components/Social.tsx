@@ -220,39 +220,43 @@ export function Comments({ code, signedIn }: { code: string; signedIn: boolean }
     <div className="card">
       <h2>Comments</h2>
       {list.length === 0 && <p className="muted">No comments yet.</p>}
-      <ul className="penalties">
+      <ul className="comments">
         {list.map((c) => (
-          <li key={c.id}>
-            <a href={`/t/${c.author.ref}`}>{c.author.name}</a>
-            {c.author.isCaller && <span className="badge review"> caller</span>}{" "}
-            <span className="muted small">{ago(c.at)}</span>
-            {c.canDelete && (
-              <button
-                type="button"
-                className="ghost"
-                onClick={() => api.del(`/v1/comments/${c.id}`).then(load)}
-              >
-                Delete
-              </button>
-            )}
-            <br />
-            {c.body}
+          <li key={c.id} className="comment">
+            <div className="comment-head">
+              <a href={`/t/${c.author.ref}`} className="comment-author">
+                {c.author.name}
+              </a>
+              {c.author.isCaller && <span className="badge review">caller</span>}
+              <span className="muted small">{ago(c.at)}</span>
+              {c.canDelete && (
+                <button
+                  type="button"
+                  className="ghost comment-delete"
+                  onClick={() => api.del(`/v1/comments/${c.id}`).then(load)}
+                >
+                  Delete
+                </button>
+              )}
+            </div>
+            <p className="comment-body">{c.body}</p>
           </li>
         ))}
       </ul>
       {signedIn ? (
-        <div className="stack">
+        <div className="comment-form">
           <textarea
+            rows={3}
             value={text}
             maxLength={500}
             onChange={(e) => setText(e.target.value)}
             placeholder="Add a comment"
           />
-          <div className="row">
+          <div className="row spread">
+            <span className="muted small">{text.length}/500</span>
             <button type="button" disabled={!text.trim()} onClick={send}>
               Comment
             </button>
-            <span className="muted small">{text.length}/500</span>
           </div>
           {err && <p className="error">{err}</p>}
         </div>

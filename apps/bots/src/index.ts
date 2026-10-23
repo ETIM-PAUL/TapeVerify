@@ -1,8 +1,12 @@
+import { setDefaultResultOrder } from "node:dns";
 import { createPool } from "@tapeverify/shared";
 import { handleUpdate } from "./bot.js";
 import { dispatchOutbox, type Log } from "./dispatch.js";
 import { TelegramApi } from "./telegram.js";
 import { XClient } from "./x.js";
+
+// Some networks advertise IPv6 for api.telegram.org but cannot route it, which makes fetch fail.
+setDefaultResultOrder("ipv4first");
 
 const log: Log = {
   info: (msg, f) =>
@@ -45,7 +49,10 @@ async function poll() {
       for (const u of updates) {
         offset = u.update_id + 1;
         await handleUpdate(pool, telegram, urls, u).catch((e) =>
-          log.warn("update failed", { err: (e as Error).message }),
+          log.warn("update failed", {
+            err: (e as Error).message,
+            cause: String((e as Error).cause),
+          }),
         );
       }
     } catch (e) {

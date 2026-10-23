@@ -97,6 +97,10 @@ export function validateCallOrder(m: MarketRulesLite, input: CallOrderInput): Ca
   ) => {
     if (!raw) return { value: undefined as string | undefined };
     if (!/^\d+(\.\d+)?$/.test(raw)) return { error: `${label} must be a positive price` };
+    if (cmp(raw, m.order_min_price) < 0)
+      return {
+        error: `${label} must be at least $${m.order_min_price} on ${m.symbol} (Strike's minimum price)`,
+      };
     const price = roundToGrid(raw, m.order_min_price, m.order_tick_price);
     if (cmp(price, "0") === 0) return { error: `${label} must be above zero` };
     if (cmp(m.order_max_price, "0") > 0 && cmp(price, m.order_max_price) > 0)

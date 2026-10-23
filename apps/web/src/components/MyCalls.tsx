@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { api, type Call } from "../api";
 import { usd } from "../format";
+import { Modal } from "./Modal";
 
 const LABEL: Record<Call["status"], string> = {
   pending: "Waiting for fill",
@@ -13,14 +14,24 @@ const LABEL: Record<Call["status"], string> = {
 export function MyCalls({ calls, onChange }: { calls: Call[]; onChange: () => void }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [closing, setClosing] = useState<Call | null>(null);
 
-  async function close(id: string) {
+  async function close(call: Call) {
     setError(null);
-    setBusy(id);
+    setBusy(call.id);
+    setClosing(call);
     try {
-      await api.post(`/v1/calls/${id}/close`);
+      await api.post(`/v1/calls/${call.id}/close`);
+      // The close order is sent; wait for the tracker to record the exit fill (up to 60s).
+      for (let i = 0; i < 40; i++) {
+        const r = await api.get<{ call: Call }>(`/v1/calls/${call.code}`);
+        if (r.call.status === "closed") break;
+        await new Promise((res) => setTimeout(res, 1500));
+      }
+      setClosing(null);
       onChange();
     } catch (e) {
+      setClosing(null);
       setError((e as Error).message);
     } finally {
       setBusy(null);
@@ -30,6 +41,14 @@ export function MyCalls({ calls, onChange }: { calls: Call[]; onChange: () => vo
   return (
     <div className="card">
       <h2>My calls</h2>
+      {closing && (
+        <Modal title="Closing call" onClose={() => {}}>
+          <p className="muted">
+            Closing your {closing.symbol} {closing.side}. Waiting for the exchange to confirm the
+            close. This window closes by itself when it does.
+          </p>
+        </Modal>
+      )}
       {error && <p className="error">{error}</p>}
       {calls.length === 0 ? (
         <p className="muted">No calls yet.</p>
@@ -58,7 +77,7 @@ export function MyCalls({ calls, onChange }: { calls: Call[]; onChange: () => vo
                 <td>{c.entry ? usd(c.entry.price) : "—"}</td>
                 <td>{c.exit ? `${usd(c.exit.price)} ${c.exit.reason ?? ""}` : "—"}</td>
                 <td>
-                  <a href={c.url} target="_blank" rel="noreferrer">
+                  <a href={`/call/${c.code}`} target="_blank" rel="noreferrer">
                     {c.code}
                   </a>
                 </td>
@@ -68,7 +87,7 @@ export function MyCalls({ calls, onChange }: { calls: Call[]; onChange: () => vo
                       type="button"
                       className="ghost"
                       disabled={busy === c.id}
-                      onClick={() => close(c.id)}
+                      onClick={() => close(c)}
                     >
                       Close
                     </button>

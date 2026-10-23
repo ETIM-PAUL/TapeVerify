@@ -218,3 +218,28 @@ describe("sizeFromMargin", () => {
     expect(sizeFromMargin("0.01", 1, "80000", "0.00001", "0.00001")).toBeNull();
   });
 });
+
+describe("exit prices below the market's listed min price", () => {
+  it("are rejected with a message naming the minimum, as Strike would drop them", () => {
+    const r = validateCallOrder(
+      {
+        symbol: "ADA-USD",
+        base_asset: "ADA",
+        status: "trading",
+        reduce_only: false,
+        margin_tiers: [{ max_notional: "1000000", max_leverage: 75 }],
+        order_tick_price: "0.00010",
+        order_min_price: "10",
+        order_max_price: "20000",
+        order_market_step_size: "1",
+        order_market_min_size: "1",
+        order_market_max_size: "2000000",
+        order_min_notional: "5",
+        mark_price: "0.21265842",
+      },
+      { side: "short", size: "30", leverage: 5, tpPrice: "0.20", slPrice: "0.25" },
+    );
+    expect(r).toMatchObject({ ok: false, code: "bad_exit" });
+    expect((r as { error: string }).error).toContain("at least $10");
+  });
+});

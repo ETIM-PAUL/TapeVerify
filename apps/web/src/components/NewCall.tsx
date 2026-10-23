@@ -38,6 +38,10 @@ export function NewCall({ onCreated }: { onCreated: () => void }) {
       .catch(() => {});
   }, []);
 
+  // An old error shouldn't linger once the inputs it was about have changed.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: clears on input change only
+  useEffect(() => setError(null), [symbol, side, size, leverage, tp, sl]);
+
   const market = markets.find((m) => m.symbol === symbol);
   const notional = useMemo(
     () => (market && Number(size) > 0 ? Number(size) * Number(market.mark) : 0),
@@ -46,6 +50,18 @@ export function NewCall({ onCreated }: { onCreated: () => void }) {
 
   async function submit() {
     setError(null);
+    const mark = Number(market?.mark);
+    const long = side === "long";
+    if (mark > 0) {
+      if (tp && Number(tp) > 0 && Number(tp) > mark !== long)
+        return setError(
+          `Take-profit ${tp} must be ${long ? "above" : "below"} the current price ${mark} for a ${side}`,
+        );
+      if (sl && Number(sl) > 0 && Number(sl) > mark === long)
+        return setError(
+          `Stop-loss ${sl} must be ${long ? "below" : "above"} the current price ${mark} for a ${side}`,
+        );
+    }
     setBusy(true);
     try {
       const { call } = await api.post<{ call: Call }>("/v1/calls", {
