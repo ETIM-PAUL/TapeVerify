@@ -453,7 +453,11 @@ describe("premium calls stay locked to subscribers", () => {
       .events.find((e: { call?: { code: string } }) => e.call?.code === call.code);
     expect(seen.call.entryPrice).toBe("80000");
 
-    const page = await j(t, "GET", `/c/${call.code}`);
+    const page = await t.app.inject({
+      method: "GET",
+      url: `/c/${call.code}`,
+      headers: { "user-agent": "TelegramBot" },
+    });
     expect(page.statusCode).toBe(200);
     expect(page.body).toContain("Premium call from");
     for (const secret of ["80000", "84000", "LONG", "long "])

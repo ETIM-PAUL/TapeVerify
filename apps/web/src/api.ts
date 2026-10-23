@@ -13,6 +13,19 @@ export class ApiError extends Error {
   }
 }
 
+/** The server's "Invalid request" is useless on its own; say which field was wrong. */
+export function explainError(e: unknown): string {
+  if (e instanceof ApiError && Array.isArray(e.data?.issues)) {
+    const issues = (e.data.issues as unknown[]).map((i) =>
+      typeof i === "string"
+        ? i
+        : `${String((i as { path?: unknown[] }).path?.join(".") || "request")}: ${(i as { message?: string }).message ?? "invalid"}`,
+    );
+    if (issues.length) return `${(e as Error).message}: ${issues.join("; ")}`;
+  }
+  return (e as Error).message;
+}
+
 export const OFFLINE =
   "TapeVerify's server isn't responding. Make sure the API is running, then try again.";
 
@@ -357,7 +370,6 @@ export interface Description {
   headline: string;
   lines: RuleLine[];
 }
-// biome-ignore lint/suspicious/noExplicitAny: the strategy spec is edited as JSON; the server validates it
 export type SpecJson = any;
 export interface DraftOut {
   spec: SpecJson;
@@ -655,6 +667,7 @@ export interface FeedEvent {
     locked?: boolean;
     side?: "long" | "short";
     leverage?: number;
+    status?: "open" | "expired" | "closed";
     entryPrice?: string;
     exitPrice?: string | null;
     exitReason?: string | null;

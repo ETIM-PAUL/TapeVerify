@@ -52,3 +52,39 @@ describe("KeyVault", () => {
     expect(inspect(s)).not.toContain("hunter2");
   });
 });
+
+describe("KEK from the environment", () => {
+  const good = "ab12"
+    .repeat(16)
+    .replace(/(.{8})/g, "$1")
+    .slice(0, 64);
+  it("refuses a placeholder key, and a production key without its own id", () => {
+    expect(() => LocalKekProvider.fromEnv({ VAULT_KEK_HEX: "00".repeat(32) })).toThrow(
+      /placeholder/,
+    );
+    expect(() => LocalKekProvider.fromEnv({ VAULT_KEK_HEX: "ab".repeat(32) })).toThrow(
+      /placeholder/,
+    );
+    expect(() => LocalKekProvider.fromEnv({ VAULT_KEK_HEX: "deadbeef".repeat(8) })).toThrow(
+      /placeholder/,
+    );
+    expect(() =>
+      LocalKekProvider.fromEnv({
+        VAULT_KEK_HEX: randomBytes(32).toString("hex"),
+        NODE_ENV: "production",
+      }),
+    ).toThrow(/VAULT_KEK_ID/);
+  });
+  it("accepts a random key, and keeps previous keys for rotation", () => {
+    const k = randomBytes(32).toString("hex");
+    const prev = randomBytes(32).toString("hex");
+    const p = LocalKekProvider.fromEnv({
+      VAULT_KEK_HEX: k,
+      VAULT_KEK_ID: "2027-01",
+      VAULT_KEK_PREV_2026_07: prev,
+      NODE_ENV: "production",
+    });
+    expect(p.currentId).toBe("2027-01");
+    expect(good).toHaveLength(64);
+  });
+});

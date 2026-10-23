@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ApiError, api, type ListingDetail, type User } from "../api";
+import { ApiError, api, explainError, type ListingDetail, type User } from "../api";
 import { duration, shortAddr, usd } from "../format";
 import { useWallet } from "../wallet-context";
 import { Connect } from "./Connect";
@@ -34,17 +34,22 @@ export function ListingPage({ id }: { id: string }) {
   }, [id]);
 
   async function clone() {
-    setBusy(true);
     setDone(null);
     setError(null);
+    const m = Number(margin.replace(/[$,\s]/g, ""));
+    const lo = Number(loss.replace(/[$,\s]/g, ""));
+    if (!Number.isFinite(m) || m < 5)
+      return setError("Max margin per position must be at least $5.");
+    if (!Number.isFinite(lo) || lo <= 0) return setError("Stop-after-losing must be more than $0.");
+    setBusy(true);
     try {
       const r = await api.post<{
         strategyId: string;
         paperId?: string;
         live?: { ok: boolean; error?: string; id?: string };
       }>(`/v1/market/${id}/clone`, {
-        maxMarginUsd: Number(margin),
-        maxLossUsd: Number(loss),
+        maxMarginUsd: m,
+        maxLossUsd: lo,
         mode,
         acknowledge: mode === "live" ? ack : undefined,
       });
@@ -61,7 +66,7 @@ export function ListingPage({ id }: { id: string }) {
               : "Cloned and live. Manage it in the Studio.",
         );
     } catch (e) {
-      setError((e as Error).message);
+      setError(explainError(e));
     } finally {
       setBusy(false);
     }

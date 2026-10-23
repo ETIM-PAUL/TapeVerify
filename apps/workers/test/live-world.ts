@@ -49,6 +49,8 @@ export class World {
   hooks: Array<(c: Call) => void | Promise<void>> = [];
   position: { side: "long" | "short"; size: number; entry: number; strategyId: string } | null =
     null;
+  /** A position on the account that no run placed (opened by hand, or from an order whose outcome was unclear). */
+  foreignPosition: { size: number; entry: number } | null = null;
 
   get rules() {
     return {
@@ -260,6 +262,32 @@ export class World {
             { account_id: "sub-1", status: "active", available_balance: String(this.subAvailable) },
           ],
         });
+      case "GET /v2/positions": {
+        const p = this.position
+          ? {
+              size: this.position.size * (this.position.side === "long" ? 1 : -1),
+              entry: this.position.entry,
+            }
+          : this.foreignPosition;
+        return json({
+          count: p ? 1 : 0,
+          positions: p
+            ? [
+                {
+                  id: 1,
+                  symbol: SYMBOL,
+                  size: String(p.size),
+                  entry_price: String(p.entry),
+                  leverage: 5,
+                  margin_mode: "isolated",
+                  liquidation_price: "1",
+                  upnl: "0",
+                  create_timestamp: 1,
+                },
+              ]
+            : [],
+        });
+      }
       case "POST /v2/leverage":
         return json({ leverage: call.body?.leverage, symbol: SYMBOL });
       case "POST /v2/order/strategy": {
@@ -376,11 +404,15 @@ const OPTS: LiveOptions = {
   sleep: async () => {},
 };
 
-export async function makeFixture(pool: pg.Pool, world = new World()): Promise<Fixture> {
+export async function makeFixture(
+  pool: pg.Pool,
+  world = new World(),
+  sharedVault?: KeyVault,
+): Promise<Fixture> {
   await pool.query(
     "INSERT INTO system_flags (key, value) VALUES ('emergency_stop_test', 'false'::jsonb) ON CONFLICT (key) DO NOTHING",
   );
-  const vault = new KeyVault(new LocalKekProvider("t", { t: randomBytes(32) }));
+  const vault = sharedVault ?? new KeyVault(new LocalKekProvider("t", { t: randomBytes(32) }));
   const cfg = loadStrikeConfig({ STRIKE_NETWORK: "testnet", BUILDER_FEE_BPS: "10" });
   const gateway = new StrikeGateway(pool, vault, cfg, world.fetch);
   const runner = new LiveRunner(pool, gateway, silentLogger, OPTS);

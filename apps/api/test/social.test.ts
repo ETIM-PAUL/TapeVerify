@@ -145,8 +145,7 @@ describe("the feed", () => {
     expect(all.map((e: { kind: string }) => e.kind)).toEqual([
       "trade_closed",
       "call_closed",
-      "call_opened",
-      "call_opened",
+      "call_opened", // a call that closed shows once, as closed, not also as opened
     ]);
     expect(all.map((e: { at: number }) => e.at)).toEqual(
       [...all.map((e: { at: number }) => e.at)].sort((x: number, y: number) => y - x),
@@ -435,5 +434,32 @@ describe("vault graduation", () => {
     const v = (await get("/v1/me/vault", p.cookie)).json();
     expect(v.eligible).toBe(false);
     expect(v.vault).toBeNull();
+  });
+});
+
+describe("moving a Telegram account between wallets", () => {
+  it("unlinks, and the same Telegram account can then be linked to another account", async () => {
+    const [a, b] = [await person(), await person()];
+    const tg = 8_000_000 + (Date.now() % 1_000_000);
+    await t.pool.query(
+      "INSERT INTO telegram_links (user_id, tg_user_id, tg_username) VALUES ($1,$2,'me')",
+      [a.id, tg],
+    );
+    await t.pool.query(
+      "INSERT INTO post_channels (user_id, kind, target, title) VALUES ($1,'telegram','-99','Room')",
+      [a.id],
+    );
+    expect((await get("/v1/me/connections", a.cookie)).json().telegram.linked).toBe(true);
+    expect((await del("/v1/me/telegram", a.cookie)).statusCode).toBe(200);
+    expect((await get("/v1/me/connections", a.cookie)).json().telegram.linked).toBe(false);
+    // the group a registered is still hers
+    expect((await get("/v1/me/connections", a.cookie)).json().channels).toHaveLength(1);
+    // the Telegram account is free for the other wallet
+    await t.pool.query("INSERT INTO telegram_links (user_id, tg_user_id) VALUES ($1,$2)", [
+      b.id,
+      tg,
+    ]);
+    expect((await get("/v1/me/connections", b.cookie)).json().telegram.linked).toBe(true);
+    expect((await t.app.inject({ method: "DELETE", url: "/v1/me/telegram" })).statusCode).toBe(401);
   });
 });

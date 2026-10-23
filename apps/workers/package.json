@@ -12,10 +12,12 @@
     "coverage": "tsx --env-file-if-exists=../../.env src/cli/coverage.ts",
     "backfill": "tsx --env-file-if-exists=../../.env src/cli/backfill.ts",
     "records": "tsx --env-file-if-exists=../../.env src/cli/records.ts",
+    "vault:rotate": "tsx --env-file-if-exists=../../.env src/cli/vault-rotate.ts",
     "fairfill": "tsx --env-file-if-exists=../../.env src/cli/fairfill.ts",
     "verify": "tsx --env-file-if-exists=../../.env src/cli/verify.ts",
     "stats": "tsx --env-file-if-exists=../../.env src/cli/stats.ts",
-    "emergency": "tsx --env-file-if-exists=../../.env src/cli/emergency.ts"
+    "emergency": "tsx --env-file-if-exists=../../.env src/cli/emergency.ts",
+    "perf": "vitest run --config vitest.perf.config.ts"
   },
   "dependencies": {
     "@tapeverify/verify": "workspace:*",

@@ -39,6 +39,15 @@ const schema = z.object({
   X_POSTING: z.enum(["true", "false"]).default("false"),
   /** The USDC token creators are paid in. Defaults to Circle's devnet USDC off mainnet. */
   SUBSCRIPTIONS_USDC_MINT: z.string().min(32).max(44).optional(),
+  /** Ethereum JSON-RPC used to check USDC subscription payments. Defaults to a public Sepolia/mainnet node. */
+  SUBSCRIPTIONS_ETH_RPC_URL: z.string().url().optional(),
+  /** The ERC-20 USDC contract creators are paid in on Ethereum. Defaults to Circle's Sepolia/mainnet USDC. */
+  SUBSCRIPTIONS_ETH_USDC: z
+    .string()
+    .regex(/^0x[0-9a-fA-F]{40}$/)
+    .optional(),
+  /** Koios API base used to check ADA subscription payments. Defaults to the public preprod/mainnet instance. */
+  SUBSCRIPTIONS_KOIOS_URL: z.string().url().optional(),
   TRUST_PROXY: z.enum(["true", "false"]).default("false"),
 });
 
@@ -58,6 +67,9 @@ export interface ApiConfig {
   verifySalt: string;
   telegramBot: string | null;
   usdcMint: string;
+  ethRpcUrl: string;
+  ethUsdc: string;
+  koiosUrl: string;
   xPosting: boolean;
   recordPublicKey: string | null;
   anchorRpcUrl: string | null;
@@ -86,6 +98,21 @@ export function loadApiConfig(env: Record<string, string | undefined> = process.
       (env.STRIKE_NETWORK === "mainnet"
         ? "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
         : "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU"),
+    ethRpcUrl:
+      e.SUBSCRIPTIONS_ETH_RPC_URL ??
+      (env.STRIKE_NETWORK === "mainnet"
+        ? "https://ethereum-rpc.publicnode.com"
+        : "https://ethereum-sepolia-rpc.publicnode.com"),
+    ethUsdc:
+      e.SUBSCRIPTIONS_ETH_USDC ??
+      (env.STRIKE_NETWORK === "mainnet"
+        ? "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+        : "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238"),
+    koiosUrl:
+      e.SUBSCRIPTIONS_KOIOS_URL ??
+      (env.STRIKE_NETWORK === "mainnet"
+        ? "https://api.koios.rest/api/v1"
+        : "https://preprod.koios.rest/api/v1"),
     xPosting: e.X_POSTING === "true",
     recordPublicKey:
       e.RECORD_PUBLIC_KEY ??

@@ -162,7 +162,7 @@ export const RANK_MINIMUMS: Record<
   Timeframe,
   { trades: number; activeDays: number; volumeUsd: number }
 > = {
-  "24h": { trades: 3, activeDays: 1, volumeUsd: 500 },
+  "24h": { trades: 3, activeDays: 1, volumeUsd: 10 },
   "7d": { trades: 5, activeDays: 2, volumeUsd: 500 },
   "30d": { trades: 8, activeDays: 3, volumeUsd: 500 },
   all: { trades: 10, activeDays: 3, volumeUsd: 500 },

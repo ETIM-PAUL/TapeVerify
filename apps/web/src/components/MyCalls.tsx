@@ -2,6 +2,7 @@ import { useState } from "react";
 import { api, type Call } from "../api";
 import { usd } from "../format";
 import { Modal } from "./Modal";
+import { Pager } from "./Pager";
 
 const LABEL: Record<Call["status"], string> = {
   pending: "Waiting for fill",
@@ -11,10 +12,20 @@ const LABEL: Record<Call["status"], string> = {
   failed: "Failed",
 };
 
+const FAIL_REASON: Record<string, string> = {
+  market_order_exceeded_slippage:
+    "Strike cancelled it: the order book was too thin to fill near the mark price. Try a smaller size or retry",
+  order_not_found: "Strike never recorded the order",
+};
+
 export function MyCalls({ calls, onChange }: { calls: Call[]; onChange: () => void }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [closing, setClosing] = useState<Call | null>(null);
+  const [page, setPage] = useState(0);
+  const [size, setSize] = useState(5);
+  const last = Math.max(0, Math.ceil(calls.length / size) - 1);
+  const at = Math.min(page, last);
 
   async function close(call: Call) {
     setError(null);
@@ -65,14 +76,14 @@ export function MyCalls({ calls, onChange }: { calls: Call[]; onChange: () => vo
             </tr>
           </thead>
           <tbody>
-            {calls.map((c) => (
+            {calls.slice(at * size, (at + 1) * size).map((c) => (
               <tr key={c.id}>
                 <td>
                   {c.symbol} {c.side} {c.leverage}x
                 </td>
                 <td>
                   {LABEL[c.status]}
-                  {c.failReason ? ` (${c.failReason})` : ""}
+                  {c.failReason ? ` (${FAIL_REASON[c.failReason] ?? c.failReason})` : ""}
                 </td>
                 <td>{c.entry ? usd(c.entry.price) : "—"}</td>
                 <td>{c.exit ? `${usd(c.exit.price)} ${c.exit.reason ?? ""}` : "—"}</td>
@@ -98,6 +109,17 @@ export function MyCalls({ calls, onChange }: { calls: Call[]; onChange: () => vo
           </tbody>
         </table>
       )}
+      <Pager
+        page={at}
+        size={size}
+        sizes={[5, 10, 20]}
+        total={calls.length}
+        onPage={setPage}
+        onSize={(n) => {
+          setSize(n);
+          setPage(0);
+        }}
+      />
     </div>
   );
 }

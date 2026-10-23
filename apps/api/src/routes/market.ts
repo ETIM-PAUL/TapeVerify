@@ -130,57 +130,61 @@ export function marketRoutes(app: FastifyInstance, d: AppDeps) {
 
   // ── Browse ──
 
-  app.get("/v1/market", async (req) => {
-    const q = z
-      .object({
-        market: z
-          .string()
-          .regex(/^[A-Z0-9]{2,10}-USD$/)
-          .optional(),
-        sort: z.enum(["pnl", "winrate", "clones", "newest"]).default("pnl"),
-        minTrades: z.coerce.number().int().min(0).max(10_000).default(0),
-        limit: z.coerce.number().int().min(1).max(100).default(30),
-        offset: z.coerce.number().int().min(0).default(0),
-      })
-      .parse(req.query);
-    const { rows } = await d.pool.query(
-      `SELECT l.*, u.handle, u.chain, u.address FROM listings l JOIN users u ON u.id = l.creator_id
+  app.get(
+    "/v1/market",
+    { config: { rateLimit: { max: 60, timeWindow: "1 minute" } } },
+    async (req) => {
+      const q = z
+        .object({
+          market: z
+            .string()
+            .regex(/^[A-Z0-9]{2,10}-USD$/)
+            .optional(),
+          sort: z.enum(["pnl", "winrate", "clones", "newest"]).default("pnl"),
+          minTrades: z.coerce.number().int().min(0).max(10_000).default(0),
+          limit: z.coerce.number().int().min(1).max(100).default(30),
+          offset: z.coerce.number().int().min(0).default(0),
+        })
+        .parse(req.query);
+      const { rows } = await d.pool.query(
+        `SELECT l.*, u.handle, u.chain, u.address FROM listings l JOIN users u ON u.id = l.creator_id
         WHERE l.status = 'published' AND ($1::text IS NULL OR l.spec->>'market' = $1) ORDER BY l.created_at DESC LIMIT 200`,
-      [q.market ?? null],
-    );
-    const listings = rows as ListingRow[];
-    const cnt = await counts(listings.map((l) => l.id));
-    const all = await Promise.all(
-      listings.map(async (l) => {
-        const rec = liveRecord(toRecord(await recordTrades(l.creator_id, [l.spec_hash])));
-        const spec = strategySpecSchema.safeParse(l.spec);
-        return {
-          id: l.id,
-          title: l.title,
-          creator: creatorOf(l),
-          version: l.version,
-          publishedAt: l.created_at.getTime(),
-          market: spec.success ? spec.data.market : "",
-          timeframe: spec.success ? spec.data.timeframe : "",
-          direction: spec.success ? spec.data.direction : "",
-          leverage: spec.success ? spec.data.sizing.leverage : 0,
-          record: headline(rec),
-          ...cnt.get(l.id)!,
-          creatorShareBps: l.creator_share_bps,
-        };
-      }),
-    );
-    const key = {
-      pnl: (e: (typeof all)[number]) => e.record.netPnl,
-      winrate: (e: (typeof all)[number]) => e.record.winRate ?? -1,
-      clones: (e: (typeof all)[number]) => e.clones,
-      newest: (e: (typeof all)[number]) => e.publishedAt,
-    }[q.sort];
-    const sorted = all
-      .filter((e) => e.record.trades >= q.minTrades)
-      .sort((a, b) => key(b) - key(a));
-    return { total: sorted.length, listings: sorted.slice(q.offset, q.offset + q.limit) };
-  });
+        [q.market ?? null],
+      );
+      const listings = rows as ListingRow[];
+      const cnt = await counts(listings.map((l) => l.id));
+      const all = await Promise.all(
+        listings.map(async (l) => {
+          const rec = liveRecord(toRecord(await recordTrades(l.creator_id, [l.spec_hash])));
+          const spec = strategySpecSchema.safeParse(l.spec);
+          return {
+            id: l.id,
+            title: l.title,
+            creator: creatorOf(l),
+            version: l.version,
+            publishedAt: l.created_at.getTime(),
+            market: spec.success ? spec.data.market : "",
+            timeframe: spec.success ? spec.data.timeframe : "",
+            direction: spec.success ? spec.data.direction : "",
+            leverage: spec.success ? spec.data.sizing.leverage : 0,
+            record: headline(rec),
+            ...cnt.get(l.id)!,
+            creatorShareBps: l.creator_share_bps,
+          };
+        }),
+      );
+      const key = {
+        pnl: (e: (typeof all)[number]) => e.record.netPnl,
+        winrate: (e: (typeof all)[number]) => e.record.winRate ?? -1,
+        clones: (e: (typeof all)[number]) => e.clones,
+        newest: (e: (typeof all)[number]) => e.publishedAt,
+      }[q.sort];
+      const sorted = all
+        .filter((e) => e.record.trades >= q.minTrades)
+        .sort((a, b) => key(b) - key(a));
+      return { total: sorted.length, listings: sorted.slice(q.offset, q.offset + q.limit) };
+    },
+  );
 
   app.get("/v1/market/mine", auth, async (req) => {
     const { rows } = await d.pool.query(
@@ -203,71 +207,75 @@ export function marketRoutes(app: FastifyInstance, d: AppDeps) {
     };
   });
 
-  app.get("/v1/market/:id", async (req, reply) => {
-    const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
-    const { rows } = await d.pool.query(
-      "SELECT l.*, u.handle, u.chain, u.address FROM listings l JOIN users u ON u.id = l.creator_id WHERE l.id = $1",
-      [id],
-    );
-    const l = rows[0] as ListingRow | undefined;
-    const viewer = await d.optionalUser(req);
-    if (!l || (l.status !== "published" && viewer?.id !== l.creator_id))
-      return reply.code(404).send({ error: "Listing not found" });
-    const spec = strategySpecSchema.safeParse(l.spec);
-    if (!spec.success) return reply.code(500).send({ error: "Listing is unreadable" });
-    const raw = await recordTrades(l.creator_id, [l.spec_hash]);
-    const rec = liveRecord(toRecord(raw));
-    const c = (await counts([l.id])).get(l.id)!;
-    const warnings = [
-      "Past results don't predict future ones. This is a record of real trades by the creator, not a promise.",
-      ...(rec.trades < 10
-        ? [
-            `Only ${rec.trades} closed live trade${rec.trades === 1 ? "" : "s"}: too few to say much.`,
-          ]
-        : []),
-      "You trade with your own budget: TapeVerify's caps, stop-loss and loss limit apply to your clone exactly as to any live run.",
-    ];
-    return {
-      id: l.id,
-      title: l.title,
-      description: l.description,
-      status: l.status,
-      version: l.version,
-      publishedAt: l.created_at.getTime(),
-      creator: creatorOf(l),
-      rules: describeStrategy(spec.data),
-      market: spec.data.market,
-      timeframe: spec.data.timeframe,
-      direction: spec.data.direction,
-      leverage: spec.data.sizing.leverage,
-      record: rec,
-      ...c,
-      terms: terms(l),
-      warnings,
-      trades: raw
-        .slice(-100)
-        .reverse()
-        .map((r) => ({
-          seq: r.seq,
-          side: r.side,
-          entryPrice: String(r.entry_price),
-          exitPrice: String(r.exit_price),
-          entryTs: Number(r.entry_ts_ms),
-          exitTs: Number(r.exit_ts_ms),
-          net: Number(r.realized_pnl ?? 0) - Number(r.entry_fee ?? 0) - Number(r.exit_fee ?? 0),
-          reason: r.exit_reason,
-          orderId: r.entry_order_id === null ? null : String(r.entry_order_id),
-          clientOrderId: r.primary_client_order_id,
-        })),
-      verification: {
-        source:
-          "Closed live trades made by the creator with exactly these rules and sizing, from Strike's fills.",
-        strikeAccountIds: [...new Set(raw.map((r) => r.account_id as string))],
-        check:
-          "Each trade's order id can be looked up in Strike's public order and fill history for that account.",
-      },
-    };
-  });
+  app.get(
+    "/v1/market/:id",
+    { config: { rateLimit: { max: 60, timeWindow: "1 minute" } } },
+    async (req, reply) => {
+      const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
+      const { rows } = await d.pool.query(
+        "SELECT l.*, u.handle, u.chain, u.address FROM listings l JOIN users u ON u.id = l.creator_id WHERE l.id = $1",
+        [id],
+      );
+      const l = rows[0] as ListingRow | undefined;
+      const viewer = await d.optionalUser(req);
+      if (!l || (l.status !== "published" && viewer?.id !== l.creator_id))
+        return reply.code(404).send({ error: "Listing not found" });
+      const spec = strategySpecSchema.safeParse(l.spec);
+      if (!spec.success) return reply.code(500).send({ error: "Listing is unreadable" });
+      const raw = await recordTrades(l.creator_id, [l.spec_hash]);
+      const rec = liveRecord(toRecord(raw));
+      const c = (await counts([l.id])).get(l.id)!;
+      const warnings = [
+        "Past results don't predict future ones. This is a record of real trades by the creator, not a promise.",
+        ...(rec.trades < 10
+          ? [
+              `Only ${rec.trades} closed live trade${rec.trades === 1 ? "" : "s"}: too few to say much.`,
+            ]
+          : []),
+        "You trade with your own budget: TapeVerify's caps, stop-loss and loss limit apply to your clone exactly as to any live run.",
+      ];
+      return {
+        id: l.id,
+        title: l.title,
+        description: l.description,
+        status: l.status,
+        version: l.version,
+        publishedAt: l.created_at.getTime(),
+        creator: creatorOf(l),
+        rules: describeStrategy(spec.data),
+        market: spec.data.market,
+        timeframe: spec.data.timeframe,
+        direction: spec.data.direction,
+        leverage: spec.data.sizing.leverage,
+        record: rec,
+        ...c,
+        terms: terms(l),
+        warnings,
+        trades: raw
+          .slice(-100)
+          .reverse()
+          .map((r) => ({
+            seq: r.seq,
+            side: r.side,
+            entryPrice: String(r.entry_price),
+            exitPrice: String(r.exit_price),
+            entryTs: Number(r.entry_ts_ms),
+            exitTs: Number(r.exit_ts_ms),
+            net: Number(r.realized_pnl ?? 0) - Number(r.entry_fee ?? 0) - Number(r.exit_fee ?? 0),
+            reason: r.exit_reason,
+            orderId: r.entry_order_id === null ? null : String(r.entry_order_id),
+            clientOrderId: r.primary_client_order_id,
+          })),
+        verification: {
+          source:
+            "Closed live trades made by the creator with exactly these rules and sizing, from Strike's fills.",
+          strikeAccountIds: [...new Set(raw.map((r) => r.account_id as string))],
+          check:
+            "Each trade's order id can be looked up in Strike's public order and fill history for that account.",
+        },
+      };
+    },
+  );
 
   // ── Publish and unlist ──
 
@@ -346,15 +354,19 @@ export function marketRoutes(app: FastifyInstance, d: AppDeps) {
     },
   );
 
-  app.post("/v1/market/:id/unlist", auth, async (req, reply) => {
-    const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
-    const r = await d.pool.query(
-      "UPDATE listings SET status = 'unlisted', updated_at = now() WHERE id = $1 AND creator_id = $2 AND status = 'published'",
-      [id, req.user!.id],
-    );
-    if (!r.rowCount) return reply.code(404).send({ error: "Listing not found" });
-    return { ok: true };
-  });
+  app.post(
+    "/v1/market/:id/unlist",
+    { ...auth, config: { rateLimit: { max: 30, timeWindow: "1 minute" } } },
+    async (req, reply) => {
+      const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
+      const r = await d.pool.query(
+        "UPDATE listings SET status = 'unlisted', updated_at = now() WHERE id = $1 AND creator_id = $2 AND status = 'published'",
+        [id, req.user!.id],
+      );
+      if (!r.rowCount) return reply.code(404).send({ error: "Listing not found" });
+      return { ok: true };
+    },
+  );
 
   // ── Clone into your own capped budget ──
 

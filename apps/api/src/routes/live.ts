@@ -171,32 +171,40 @@ export function liveRoutes(app: FastifyInstance, d: AppDeps) {
   });
 
   // Kill switch for one run: flatten the position, cancel its orders, stop.
-  app.post("/v1/live/:id/stop", auth, async (req, reply) => {
-    const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
-    const r = await d.pool.query(
-      "UPDATE live_runs SET status = 'stopping', stop_reason = 'user_stop', updated_at = now() WHERE id = $1 AND user_id = $2 AND status = 'active'",
-      [id, req.user!.id],
-    );
-    if (!r.rowCount) return reply.code(409).send({ error: "That run isn't active" });
-    await d.pool.query(
-      "INSERT INTO live_events (run_id, ts_ms, kind, data) VALUES ($1, $2, 'halt', $3)",
-      [id, Date.now(), JSON.stringify({ reason: "user_stop" })],
-    );
-    return { ok: true };
-  });
-
-  app.post("/v1/live/stop-all", auth, async (req) => {
-    const { rows } = await d.pool.query(
-      "UPDATE live_runs SET status = 'stopping', stop_reason = 'user_stop', updated_at = now() WHERE user_id = $1 AND status = 'active' RETURNING id",
-      [req.user!.id],
-    );
-    for (const r of rows)
+  app.post(
+    "/v1/live/:id/stop",
+    { ...auth, config: { rateLimit: { max: 60, timeWindow: "1 minute" } } },
+    async (req, reply) => {
+      const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
+      const r = await d.pool.query(
+        "UPDATE live_runs SET status = 'stopping', stop_reason = 'user_stop', updated_at = now() WHERE id = $1 AND user_id = $2 AND status = 'active'",
+        [id, req.user!.id],
+      );
+      if (!r.rowCount) return reply.code(409).send({ error: "That run isn't active" });
       await d.pool.query(
         "INSERT INTO live_events (run_id, ts_ms, kind, data) VALUES ($1, $2, 'halt', $3)",
-        [r.id, Date.now(), JSON.stringify({ reason: "user_stop", all: true })],
+        [id, Date.now(), JSON.stringify({ reason: "user_stop" })],
       );
-    return { stopped: rows.length };
-  });
+      return { ok: true };
+    },
+  );
+
+  app.post(
+    "/v1/live/stop-all",
+    { ...auth, config: { rateLimit: { max: 60, timeWindow: "1 minute" } } },
+    async (req) => {
+      const { rows } = await d.pool.query(
+        "UPDATE live_runs SET status = 'stopping', stop_reason = 'user_stop', updated_at = now() WHERE user_id = $1 AND status = 'active' RETURNING id",
+        [req.user!.id],
+      );
+      for (const r of rows)
+        await d.pool.query(
+          "INSERT INTO live_events (run_id, ts_ms, kind, data) VALUES ($1, $2, 'halt', $3)",
+          [r.id, Date.now(), JSON.stringify({ reason: "user_stop", all: true })],
+        );
+      return { stopped: rows.length };
+    },
+  );
 }
 
 type ReplyLike = { code(n: number): { send(b: unknown): unknown } };

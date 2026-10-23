@@ -92,6 +92,13 @@ export function authRoutes(app: FastifyInstance, d: AppDeps) {
     if (result.api_wallet_public_key !== p.public_key) {
       return reply.code(502).send({ error: "Strike returned an unexpected API wallet" });
     }
+    // The fee the person approved is the one shown in their wallet. If Strike reports a higher one, don't store the key.
+    if (Number(result.fee_share_bps) > Number(p.fee_share_bps)) {
+      return reply.code(502).send({
+        error: "Strike reported a builder fee above the one you approved",
+        code: "fee_mismatch",
+      });
+    }
 
     const client = await d.pool.connect();
     try {
@@ -150,12 +157,16 @@ export function authRoutes(app: FastifyInstance, d: AppDeps) {
     }
   });
 
-  app.post("/v1/auth/logout", async (req, reply) => {
-    const token = req.cookies.tape_session;
-    if (token) await deleteSession(d.pool, token);
-    reply.clearCookie("tape_session", { path: "/" });
-    return { ok: true };
-  });
+  app.post(
+    "/v1/auth/logout",
+    { config: { rateLimit: { max: 30, timeWindow: "1 minute" } } },
+    async (req, reply) => {
+      const token = req.cookies.tape_session;
+      if (token) await deleteSession(d.pool, token);
+      reply.clearCookie("tape_session", { path: "/" });
+      return { ok: true };
+    },
+  );
 
   app.get("/v1/me", { preHandler: d.requireUser }, async (req) => ({ user: req.user }));
 }

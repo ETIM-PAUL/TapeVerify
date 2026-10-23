@@ -98,16 +98,16 @@ export function socialRoutes(app: FastifyInstance, d: AppDeps) {
     const args = followingOnly ? [before, q.limit * 2, viewer!.id] : [before, q.limit * 2];
 
     const calls = await d.pool.query(
-      `SELECT c.id, c.short_code, c.symbol, c.side, c.leverage, c.status, c.entry_price, c.entry_ts_ms, c.exit_price, c.exit_ts_ms, c.exit_reason, c.premium, c.public_at_ms,
+      `SELECT c.id, c.short_code, c.symbol, c.side, c.leverage, c.status, c.entry_price, c.entry_ts_ms, c.exit_price, c.exit_ts_ms, c.exit_reason, c.premium, c.public_at_ms, c.expires_at,
               u.id AS uid, u.handle, u.chain, u.address,
               (SELECT count(*) FROM call_comments m WHERE m.call_id = c.id) AS comments
          FROM calls c JOIN users u ON u.id = c.user_id
-        WHERE c.entry_price IS NOT NULL AND c.status IN ('open', 'expired', 'closed') AND c.entry_ts_ms < $1 ${who}
+        WHERE c.entry_price IS NOT NULL AND c.status IN ('open', 'expired') AND c.entry_ts_ms < $1 ${who}
         ORDER BY c.entry_ts_ms DESC LIMIT $2`,
       args,
     );
     const closedCalls = await d.pool.query(
-      `SELECT c.id, c.short_code, c.symbol, c.side, c.leverage, c.status, c.entry_price, c.entry_ts_ms, c.exit_price, c.exit_ts_ms, c.exit_reason, c.premium, c.public_at_ms,
+      `SELECT c.id, c.short_code, c.symbol, c.side, c.leverage, c.status, c.entry_price, c.entry_ts_ms, c.exit_price, c.exit_ts_ms, c.exit_reason, c.premium, c.public_at_ms, c.expires_at,
               u.id AS uid, u.handle, u.chain, u.address,
               (SELECT count(*) FROM call_comments m WHERE m.call_id = c.id) AS comments
          FROM calls c JOIN users u ON u.id = c.user_id
@@ -146,6 +146,8 @@ export function socialRoutes(app: FastifyInstance, d: AppDeps) {
       symbol: r.symbol,
       side: r.side,
       leverage: r.leverage,
+      // Where the call stands now, whichever event this is: an "opened" row for a call that has since closed still says so.
+      status: r.status === "open" && Date.now() >= Number(r.expires_at) ? "expired" : r.status,
       entryPrice: String(r.entry_price),
       exitPrice: r.exit_price === null ? null : String(r.exit_price),
       exitReason: r.exit_reason,
@@ -347,6 +349,17 @@ export function socialRoutes(app: FastifyInstance, d: AppDeps) {
       })),
     };
   });
+
+  // Frees this Telegram account to be linked to a different TapeVerify account. Groups already registered stay as they are.
+  app.delete(
+    "/v1/me/telegram",
+    { preHandler: d.requireUser, config: { rateLimit: { max: 10, timeWindow: "1 minute" } } },
+    async (req) => {
+      await d.pool.query("DELETE FROM telegram_links WHERE user_id = $1", [req.user!.id]);
+      await d.pool.query("DELETE FROM telegram_link_codes WHERE user_id = $1", [req.user!.id]);
+      return { ok: true };
+    },
+  );
 
   app.post(
     "/v1/telegram/link-code",

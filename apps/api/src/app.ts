@@ -34,6 +34,19 @@ declare module "fastify" {
   }
 }
 
+export interface RouteInfo {
+  method: string;
+  url: string;
+  limited: boolean;
+  authed: boolean;
+}
+
+declare module "fastify" {
+  interface FastifyInstance {
+    routeTable: RouteInfo[];
+  }
+}
+
 export interface AppDeps {
   pool: pg.Pool;
   vault: KeyVault;
@@ -70,6 +83,8 @@ export async function buildApp(
   if (base.api.rateLimitEnabled)
     await app.register(rateLimit, { max: 120, timeWindow: "1 minute" });
 
+  const routes: RouteInfo[] = [];
+
   const d: AppDeps = {
     ...base,
     optionalUser: async (req) => {
@@ -83,6 +98,61 @@ export async function buildApp(
       req.user = user;
     },
   };
+
+  // Every route, with whether it is rate limited and whether it needs a session: audited by a test.
+  app.addHook("onRoute", (o) => {
+    for (const method of [o.method].flat()) {
+      const pre = [o.preHandler].flat().filter(Boolean);
+      routes.push({
+        method: String(method),
+        url: o.url,
+        limited: Boolean((o.config as { rateLimit?: unknown } | undefined)?.rateLimit),
+        authed: pre.includes(d.requireUser),
+      });
+    }
+  });
+  app.decorate("routeTable", routes);
+
+  // A browser only sends a cross-site request with the visitor's cookies if it also names the site it came from.
+  // State-changing requests from any site other than ours are refused; requests with no Origin (scripts, bots) aren't browsers.
+  const ownOrigins = new Set(
+    [base.api.webOrigin, base.api.publicWebUrl, base.api.publicShareUrl].map((u) => {
+      try {
+        return new URL(u).origin;
+      } catch {
+        return u;
+      }
+    }),
+  );
+  app.addHook("onRequest", async (req, reply) => {
+    if (req.method === "GET" || req.method === "HEAD" || req.method === "OPTIONS") return;
+    const origin = req.headers.origin;
+    if (!origin) return;
+    let sameHost = false;
+    try {
+      sameHost = new URL(origin).host === req.headers.host; // the app and the API on one address (a tunnel or a proxy)
+    } catch {
+      /* not a URL: refused below */
+    }
+    if (sameHost || ownOrigins.has(origin) || (!base.api.secureCookies && localOrigin.test(origin)))
+      return;
+    return reply
+      .code(403)
+      .send({ error: "Request from an unknown site was blocked", code: "bad_origin" });
+  });
+
+  // Headers every response should carry.
+  app.addHook("onSend", async (req, reply, payload) => {
+    reply.header("X-Content-Type-Options", "nosniff");
+    reply.header("X-Frame-Options", "DENY");
+    reply.header("Referrer-Policy", "strict-origin-when-cross-origin");
+    if (base.api.secureCookies)
+      reply.header("Strict-Transport-Security", "max-age=15552000; includeSubDomains");
+    // API answers can be personal: they are never stored by a shared cache.
+    if (req.url.startsWith("/v1/") && !reply.hasHeader("Cache-Control"))
+      reply.header("Cache-Control", "no-store");
+    return payload;
+  });
 
   app.setErrorHandler((err, req, reply) => {
     if (err instanceof ZodError)

@@ -20,6 +20,7 @@ import {
   closePositionOrder,
   getAccount,
   getAccountOrders,
+  getAccountPositions,
   getFeeTiers,
   getMarkPrice,
   getSubAccounts,
@@ -79,6 +80,7 @@ interface Run {
 
 interface Trade {
   id: string;
+  builder_bps?: number | null;
   seq: number;
   symbol: string;
   side: "long" | "short";
@@ -499,7 +501,7 @@ export class LiveRunner {
             client_order_id: cid,
             ...(run.sub_account_id ? { sub_account_id: run.sub_account_id } : {}),
           },
-          this.opts.builderBps,
+          t.builder_bps ?? this.opts.builderBps,
         );
         await this.pool.query("UPDATE live_trades SET trail_client_order_id = $2 WHERE id = $1", [
           t.id,
@@ -554,7 +556,7 @@ export class LiveRunner {
               client_order_id: cid,
               ...(run.sub_account_id ? { sub_account_id: run.sub_account_id } : {}),
             },
-            this.opts.builderBps,
+            t.builder_bps ?? this.opts.builderBps,
           ),
         { attempts: 5, shouldRetry: (e) => !isDefiniteRejection(e), sleep: this.sleep },
       );
@@ -761,12 +763,31 @@ export class LiveRunner {
     let mark: number;
     let available: number;
     try {
+      // Never stack a new trade on a position this run isn't tracking (one whose order outcome was unclear, or one
+      // the person opened by hand): the loss cap only knows about the trades it placed.
+      const existing = await getAccountPositions(anon, run.account_id, spec.market);
+      if (existing.length > 0) {
+        await audit(
+          this.pool,
+          run.id,
+          "entry_refused",
+          {
+            code: "untracked_position",
+            reason: `There is already an open ${spec.market} position on this account`,
+            bar: b.t,
+          },
+          now,
+        );
+        return;
+      }
       mark = Number((await getMarkPrice(anon, spec.market)).p);
       available = await this.availableUsd(run, c);
     } catch (e) {
       await audit(this.pool, run.id, "entry_refused", { code: "no_data", reason: errMsg(e) }, now);
       return;
     }
+    // What this user agreed to pay, never more than the server is configured to charge.
+    const feeBps = await this.gateway.effectiveBuilderBps(run.user_id);
     const plan = planLiveEntry({
       spec,
       budget: run.budget,
@@ -776,7 +797,7 @@ export class LiveRunner {
       realizedLossUsd: realizedLoss,
       rules: rules as unknown as MarketRulesLite,
       takerRate: await this.takerRate(anon),
-      builderBps: this.opts.builderBps,
+      builderBps: feeBps,
       slippageBps: this.opts.slippageBps,
     });
     if (!plan.ok) {
@@ -826,7 +847,7 @@ export class LiveRunner {
         plan.worstCaseLoss,
         strategyId,
         cid,
-        this.opts.builderBps,
+        feeBps,
       ],
     );
     const tradeId = ins.rows[0].id as string;
@@ -888,7 +909,7 @@ export class LiveRunner {
                 working_type: "mark_price",
               },
             } as Parameters<typeof placeStrategyOrder>[1],
-            this.opts.builderBps,
+            feeBps,
           ),
         // Only a rate limit is certain not to have been processed; anything else may have landed.
         { attempts: 3, shouldRetry: isRateLimited, sleep: this.sleep },

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { api, type FeedEvent, type User } from "../api";
 import type { ActiveWallet } from "../wallet-context";
 import { Connect } from "./Connect";
-import { EventRow } from "./Social";
+import { EventList } from "./Social";
 
 const POINTS = [
   {
@@ -72,14 +72,7 @@ export function Landing({ onDone }: { onDone: (user: User, wallet: ActiveWallet)
             Nothing has been posted yet. Connect a wallet and post the first call.
           </p>
         ) : (
-          <ul className="penalties">
-            {events.map((e) => (
-              <EventRow
-                key={`${e.kind}-${e.at}-${e.call?.code ?? e.trade?.symbol}-${e.trader.ref}`}
-                e={e}
-              />
-            ))}
-          </ul>
+          <EventList events={events} />
         )}
       </div>
     </div>

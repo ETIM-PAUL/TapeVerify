@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
-import { api, type LiveRunDetail, type LiveRunSummary, type LiveStatus } from "../api";
+import {
+  api,
+  explainError,
+  type LiveRunDetail,
+  type LiveRunSummary,
+  type LiveStatus,
+} from "../api";
 import { usd } from "../format";
 
 const STATUS: Record<LiveRunSummary["status"], string> = {
@@ -72,17 +78,22 @@ export function LivePanel({ strategyId }: { strategyId: string | null }) {
   async function start() {
     if (!strategyId) return;
     setError(null);
+    const m = Number(margin.replace(/[$,\s]/g, ""));
+    const l = Number(loss.replace(/[$,\s]/g, ""));
+    if (!Number.isFinite(m) || m < 5)
+      return setError("Max margin per position must be at least $5.");
+    if (!Number.isFinite(l) || l <= 0) return setError("Stop-after-losing must be more than $0.");
     try {
       const r = await api.post<{ id: string; notes: string[] }>(
         `/v1/strategies/${strategyId}/live`,
-        { maxMarginUsd: Number(margin), maxLossUsd: Number(loss), acknowledge: ack },
+        { maxMarginUsd: m, maxLossUsd: l, acknowledge: ack },
       );
       setNotes(r.notes);
       setOpen(r.id);
       setAck(false);
       load();
     } catch (e) {
-      setError((e as Error).message);
+      setError(explainError(e));
     }
   }
 

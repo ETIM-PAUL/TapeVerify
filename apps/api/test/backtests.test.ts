@@ -12,6 +12,11 @@ const SYMBOL = "BTC-USD";
 async function seedCandles() {
   const end = Math.floor(Date.now() / HOUR) * HOUR;
   const n = 60 * 24;
+  // Earlier runs seeded this window from a different hour: clear them, or the series blends and the result drifts.
+  await t.pool.query(
+    "DELETE FROM candles WHERE symbol = $1 AND interval = '1h' AND price_type = 'mark' AND open_time > $2",
+    [SYMBOL, end - (n + 48) * HOUR],
+  );
   const values: unknown[][] = [];
   for (let i = 0; i < n; i++) {
     const tt = end - (n - i) * HOUR;

@@ -32,6 +32,11 @@ export async function runRetention(
       "DELETE FROM depth_snapshots WHERE ts_ms < $1",
       now - cfg.depthRetentionDays * DAY,
     ),
+    sessions: await del(
+      "sessions",
+      "DELETE FROM sessions WHERE expires_at < to_timestamp($1 / 1000.0)",
+      now,
+    ),
     trades: await del(
       "market_trades",
       "DELETE FROM market_trades WHERE time_ms < $1",

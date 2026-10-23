@@ -75,9 +75,18 @@ describe("preview card", () => {
   });
 });
 
+const BOT = { "user-agent": "TelegramBot (like TwitterBot)" };
+
 describe("share page", () => {
-  it("has the Open Graph and Twitter tags crawlers need, pointing at the card and the app", async () => {
+  it("sends people straight to the call page, and only crawlers get the preview page", async () => {
     const r = await t.app.inject({ method: "GET", url: `/c/${code}` });
+    expect(r.statusCode).toBe(302);
+    expect(r.headers.location).toMatch(new RegExp(`/call/${code}$`));
+    expect(r.headers.vary).toContain("User-Agent");
+  });
+
+  it("has the Open Graph and Twitter tags crawlers need, pointing at the card and the app", async () => {
+    const r = await t.app.inject({ method: "GET", url: `/c/${code}`, headers: BOT });
     expect(r.statusCode).toBe(200);
     expect(r.headers["content-type"]).toContain("text/html");
     const h = r.body;
@@ -95,9 +104,9 @@ describe("share page", () => {
   it("escapes anything user-controlled", async () => {
     await t.pool.query("UPDATE users SET handle = $2 WHERE id = $1", [
       userId,
-      `"><script>alert(1)</script>`,
+      `"><script>alert(1)</script>${Math.random().toString(36).slice(2, 7)}`,
     ]);
-    const h = (await t.app.inject({ method: "GET", url: `/c/${code}` })).body;
+    const h = (await t.app.inject({ method: "GET", url: `/c/${code}`, headers: BOT })).body;
     expect(h).not.toContain("<script>alert(1)");
     expect(h).not.toContain('"><script>');
     expect(h).toContain("&lt;script&gt;");

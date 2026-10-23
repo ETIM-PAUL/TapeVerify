@@ -1,6 +1,9 @@
 import { createHash, randomBytes } from "node:crypto";
 import type pg from "pg";
 
+/** Live sessions kept per person (a phone, a laptop, a few browsers). */
+export const MAX_SESSIONS = 10;
+
 const hash = (token: string) => createHash("sha256").update(token).digest("hex");
 
 export async function createSession(pool: pg.Pool, userId: string, ttlMs: number) {
@@ -11,6 +14,12 @@ export async function createSession(pool: pg.Pool, userId: string, ttlMs: number
     userId,
     expiresAt,
   ]);
+  // Expired sessions go, and a person keeps at most 10 live ones: signing in again can't pile up rows forever.
+  await pool.query(
+    `DELETE FROM sessions WHERE user_id = $1 AND (expires_at < now() OR token_hash NOT IN (
+       SELECT token_hash FROM sessions WHERE user_id = $1 ORDER BY created_at DESC LIMIT ${MAX_SESSIONS}))`,
+    [userId],
+  );
   return { token, expiresAt };
 }
 

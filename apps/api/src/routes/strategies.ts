@@ -144,31 +144,35 @@ export function strategiesRoutes(app: FastifyInstance, d: AppDeps) {
     },
   );
 
-  app.post("/v1/strategies", auth, async (req, reply) => {
-    const user = req.user!;
-    const body = saveBody.parse(req.body);
-    const v = validateStrategy(body.spec, { markets: await marketLimits(d) });
-    if (!v.ok || !v.spec)
-      return reply.code(400).send({ error: "The strategy has problems", issues: v.issues });
-    const n = await d.pool.query("SELECT count(*) AS n FROM strategies WHERE user_id = $1", [
-      user.id,
-    ]);
-    if (Number(n.rows[0].n) >= MAX_STRATEGIES)
-      return reply.code(409).send({ error: `You can keep up to ${MAX_STRATEGIES} strategies` });
-    const { rows } = await d.pool.query(
-      "INSERT INTO strategies (user_id, name, spec, source, prompt) VALUES ($1,$2,$3,$4,$5) RETURNING id, created_at",
-      [
+  app.post(
+    "/v1/strategies",
+    { ...auth, config: { rateLimit: { max: 30, timeWindow: "1 minute" } } },
+    async (req, reply) => {
+      const user = req.user!;
+      const body = saveBody.parse(req.body);
+      const v = validateStrategy(body.spec, { markets: await marketLimits(d) });
+      if (!v.ok || !v.spec)
+        return reply.code(400).send({ error: "The strategy has problems", issues: v.issues });
+      const n = await d.pool.query("SELECT count(*) AS n FROM strategies WHERE user_id = $1", [
         user.id,
-        v.spec.name,
-        JSON.stringify(v.spec),
-        body.source,
-        body.source === "ai" ? (body.prompt ?? null) : null,
-      ],
-    );
-    return reply
-      .code(201)
-      .send({ id: rows[0].id, warnings: v.warnings, description: describeStrategy(v.spec) });
-  });
+      ]);
+      if (Number(n.rows[0].n) >= MAX_STRATEGIES)
+        return reply.code(409).send({ error: `You can keep up to ${MAX_STRATEGIES} strategies` });
+      const { rows } = await d.pool.query(
+        "INSERT INTO strategies (user_id, name, spec, source, prompt) VALUES ($1,$2,$3,$4,$5) RETURNING id, created_at",
+        [
+          user.id,
+          v.spec.name,
+          JSON.stringify(v.spec),
+          body.source,
+          body.source === "ai" ? (body.prompt ?? null) : null,
+        ],
+      );
+      return reply
+        .code(201)
+        .send({ id: rows[0].id, warnings: v.warnings, description: describeStrategy(v.spec) });
+    },
+  );
 
   app.get("/v1/strategies", auth, async (req) => {
     const { rows } = await d.pool.query(
@@ -211,29 +215,37 @@ export function strategiesRoutes(app: FastifyInstance, d: AppDeps) {
     };
   });
 
-  app.put("/v1/strategies/:id", auth, async (req, reply) => {
-    const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
-    const { spec } = z.object({ spec: z.unknown() }).parse(req.body);
-    const v = validateStrategy(spec, { markets: await marketLimits(d) });
-    if (!v.ok || !v.spec)
-      return reply.code(400).send({ error: "The strategy has problems", issues: v.issues });
-    const r = await d.pool.query(
-      "UPDATE strategies SET name = $3, spec = $4, updated_at = now() WHERE id = $1 AND user_id = $2 AND status = 'draft'",
-      [id, req.user!.id, v.spec.name, JSON.stringify(v.spec)],
-    );
-    if (!r.rowCount)
-      return reply.code(404).send({ error: "Strategy not found, or no longer a draft" });
-    return { ok: true, warnings: v.warnings, description: describeStrategy(v.spec) };
-  });
+  app.put(
+    "/v1/strategies/:id",
+    { ...auth, config: { rateLimit: { max: 30, timeWindow: "1 minute" } } },
+    async (req, reply) => {
+      const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
+      const { spec } = z.object({ spec: z.unknown() }).parse(req.body);
+      const v = validateStrategy(spec, { markets: await marketLimits(d) });
+      if (!v.ok || !v.spec)
+        return reply.code(400).send({ error: "The strategy has problems", issues: v.issues });
+      const r = await d.pool.query(
+        "UPDATE strategies SET name = $3, spec = $4, updated_at = now() WHERE id = $1 AND user_id = $2 AND status = 'draft'",
+        [id, req.user!.id, v.spec.name, JSON.stringify(v.spec)],
+      );
+      if (!r.rowCount)
+        return reply.code(404).send({ error: "Strategy not found, or no longer a draft" });
+      return { ok: true, warnings: v.warnings, description: describeStrategy(v.spec) };
+    },
+  );
 
-  app.delete("/v1/strategies/:id", auth, async (req, reply) => {
-    const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
-    const r = await d.pool.query(
-      "DELETE FROM strategies WHERE id = $1 AND user_id = $2 AND status = 'draft'",
-      [id, req.user!.id],
-    );
-    if (!r.rowCount)
-      return reply.code(404).send({ error: "Strategy not found, or no longer a draft" });
-    return { ok: true };
-  });
+  app.delete(
+    "/v1/strategies/:id",
+    { ...auth, config: { rateLimit: { max: 30, timeWindow: "1 minute" } } },
+    async (req, reply) => {
+      const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
+      const r = await d.pool.query(
+        "DELETE FROM strategies WHERE id = $1 AND user_id = $2 AND status = 'draft'",
+        [id, req.user!.id],
+      );
+      if (!r.rowCount)
+        return reply.code(404).send({ error: "Strategy not found, or no longer a draft" });
+      return { ok: true };
+    },
+  );
 }

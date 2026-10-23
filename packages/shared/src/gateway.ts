@@ -58,9 +58,25 @@ export class StrikeGateway {
     return rules;
   }
 
+  /**
+   * The builder fee a user's orders may carry: the lower of what this server is configured to charge and what the
+   * user approved when they connected. Changing the configured fee later can never raise it for someone who agreed to less.
+   */
+  async effectiveBuilderBps(userId: string): Promise<number> {
+    const { rows } = await this.pool.query(
+      `SELECT fee_share_bps FROM api_wallets WHERE user_id = $1 AND network = $2 AND revoked_at IS NULL
+        ORDER BY created_at DESC LIMIT 1`,
+      [userId, this.cfg.network],
+    );
+    const approved = rows[0]?.fee_share_bps;
+    return approved === null || approved === undefined
+      ? this.cfg.builderFeeBps
+      : Math.max(0, Math.min(this.cfg.builderFeeBps, Number(approved)));
+  }
+
   async clientFor(userId: string): Promise<StrikeClient> {
     const { rows } = await this.pool.query(
-      `SELECT id, public_key, sealed_private_key, expires_at FROM api_wallets
+      `SELECT id, public_key, sealed_private_key, expires_at, fee_share_bps FROM api_wallets
         WHERE user_id = $1 AND network = $2 AND revoked_at IS NULL
         ORDER BY created_at DESC LIMIT 1`,
       [userId, this.cfg.network],
@@ -72,7 +88,16 @@ export class StrikeGateway {
     const privateKey = this.vault
       .open(w.sealed_private_key as SealedSecret, `api_wallet:${w.id}`)
       .reveal();
-    return (await this.anon()).withKeys({ publicKey: w.public_key, privateKey });
+    const client = (await this.anon()).withKeys({ publicKey: w.public_key, privateKey });
+    // The client never sends a builder fee above what this user approved.
+    const approved =
+      w.fee_share_bps === null || w.fee_share_bps === undefined
+        ? this.cfg.builderFeeBps
+        : Number(w.fee_share_bps);
+    return new StrikeClient({
+      ...client.opts,
+      builderFeeBps: Math.max(0, Math.min(this.cfg.builderFeeBps, approved)),
+    });
   }
 
   /** Run a Strike call as the user; a revoked/expired API wallet forces a reconnect. */

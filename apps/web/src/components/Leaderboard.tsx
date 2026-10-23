@@ -74,7 +74,8 @@ export function Leaderboard() {
         {data && data.entries.length === 0 ? (
           <p className="muted">
             Nobody has qualified yet. To rank over {tf === "all" ? "all time" : tf}, a trader needs
-            at least {data.minimums.trades} closed trades on {data.minimums.activeDays}+ days and $
+            at least {data.minimums.trades} closed trades
+            {tf === "24h" ? " in the last 24 hours" : ` on ${data.minimums.activeDays}+ days`} and $
             {data.minimums.volumeUsd} of volume.
           </p>
         ) : (

@@ -6,6 +6,10 @@ import { OG_HEIGHT, OG_WIDTH, type OgData, ogPng, price, xmlEscape } from "../ca
 import { lockedNow } from "../lock.js";
 
 const shortAddr = (a: string) => (a.length > 16 ? `${a.slice(0, 6)}…${a.slice(-4)}` : a);
+/** Link-preview fetchers; they read the meta tags on /c/ instead of following the redirect. */
+const PREVIEW_BOT =
+  /TelegramBot|Twitterbot|facebookexternalhit|Facebot|Slackbot|Discordbot|WhatsApp|LinkedInBot|Googlebot|bingbot|SkypeUriPreview|redditbot|Embedly|Mastodon|vkShare|Pinterest|Applebot/i;
+
 const CODE = z.string().regex(/^[A-Za-z0-9]{4,16}$/);
 
 export function ogData(row: CallRow & Trader, mark: string | null, now = Date.now()): OgData {
@@ -148,6 +152,10 @@ export function shareRoutes(app: FastifyInstance, d: AppDeps) {
             }),
           );
       }
+      // People go straight to the app; only link-preview crawlers need this page's meta tags.
+      reply.header("Vary", "User-Agent");
+      if (!PREVIEW_BOT.test(req.headers["user-agent"] ?? ""))
+        return reply.redirect(`${web}/call/${row.short_code}`, 302);
       const pub = publicCall(row, row, base);
       // Link previews are public and cached, so a locked call never reveals its trade there.
       if (lockedNow(row)) {

@@ -8,6 +8,15 @@ export interface KekProvider {
   unwrap(kekId: string, wrapped: Buffer, aad: Buffer): Buffer;
 }
 
+/** One byte repeated, or a short pattern repeated: what someone types when they just want it to start. */
+export function isWeak(hex: string): boolean {
+  const h = hex.toLowerCase();
+  for (const n of [2, 4, 8, 16]) {
+    if (h === h.slice(0, n).repeat(64 / n)) return true;
+  }
+  return false;
+}
+
 /** In-process KEKs (dev/test, or a KEK injected from a secret manager). Supports rotation. */
 export class LocalKekProvider implements KekProvider {
   readonly #keys = new Map<string, Buffer>();
@@ -28,6 +37,13 @@ export class LocalKekProvider implements KekProvider {
     if (!hex || !/^[0-9a-fA-F]{64}$/.test(hex)) {
       throw new Error("VAULT_KEK_HEX must be 64 hex chars (openssl rand -hex 32)");
     }
+    if (isWeak(hex))
+      throw new Error(
+        "VAULT_KEK_HEX looks like a placeholder, not a random key (openssl rand -hex 32)",
+      );
+    // A production key gets a name of its own, so a key id can't be mistaken for the development one.
+    if (env.NODE_ENV === "production" && !env.VAULT_KEK_ID)
+      throw new Error("VAULT_KEK_ID must be set in production");
     const id = env.VAULT_KEK_ID ?? "dev-1";
     const keys: Record<string, string> = { [id]: hex };
     // Previous KEKs kept for rotation: VAULT_KEK_PREV_<ID>=hex

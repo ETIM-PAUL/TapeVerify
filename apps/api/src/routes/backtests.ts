@@ -288,13 +288,17 @@ export function backtestsRoutes(app: FastifyInstance, d: AppDeps) {
     };
   });
 
-  app.post("/v1/paper/:id/stop", auth, async (req, reply) => {
-    const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
-    const r = await d.pool.query(
-      "UPDATE paper_sessions SET status = 'stopping', updated_at = now() WHERE id = $1 AND user_id = $2 AND status = 'running'",
-      [id, req.user!.id],
-    );
-    if (!r.rowCount) return reply.code(409).send({ error: "Session isn't running" });
-    return { ok: true };
-  });
+  app.post(
+    "/v1/paper/:id/stop",
+    { ...auth, config: { rateLimit: { max: 60, timeWindow: "1 minute" } } },
+    async (req, reply) => {
+      const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
+      const r = await d.pool.query(
+        "UPDATE paper_sessions SET status = 'stopping', updated_at = now() WHERE id = $1 AND user_id = $2 AND status = 'running'",
+        [id, req.user!.id],
+      );
+      if (!r.rowCount) return reply.code(409).send({ error: "Session isn't running" });
+      return { ok: true };
+    },
+  );
 }

@@ -9,6 +9,7 @@ import {
   type LiveView,
 } from "../api";
 import { usd } from "../format";
+import { Modal } from "./Modal";
 
 const BLOCKED: Record<string, string> = {
   expired: "The follow window for this call is over.",
@@ -41,6 +42,26 @@ export function FollowPanel({
   const mine: FollowInfo | null = detail.viewer?.follow ?? null;
   const [preview, setPreview] = useState<FollowPreview | null>(null);
   const following = Boolean(mine);
+  const [closing, setClosing] = useState(false);
+
+  async function closeMine(id: string) {
+    setError(null);
+    setClosing(true);
+    try {
+      await api.post(`/v1/follows/${id}/close`);
+      // Wait for the exit fill to be recorded (up to 60s).
+      for (let i = 0; i < 40; i++) {
+        const r = await api.get<CallDetail>(`/v1/calls/${call.code}`);
+        if (r.viewer?.follow?.status === "closed") break;
+        await new Promise((res) => setTimeout(res, 1500));
+      }
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setClosing(false);
+      onFollowed();
+    }
+  }
 
   // What the person's own limits would do to this copy, shown before they press Follow.
   useEffect(() => {
@@ -70,6 +91,28 @@ export function FollowPanel({
             `Closed at ${usd(mine.exit?.price)}${mine.exit?.reason ? ` (${mine.exit.reason})` : ""}.`}
           {mine.status === "failed" && `Not filled: ${mine.failReason ?? "rejected"}.`}
         </p>
+        {mine.status === "closed" && mine.exit?.realizedPnl && (
+          <p>
+            Result:{" "}
+            <b className={Number(mine.exit.realizedPnl) >= 0 ? "ok" : "error"}>
+              {usd(mine.exit.realizedPnl)}
+            </b>
+          </p>
+        )}
+        {mine.status === "open" && (
+          <button type="button" disabled={closing} onClick={() => closeMine(mine.id)}>
+            Close my position
+          </button>
+        )}
+        {error && <p className="error">{error}</p>}
+        {closing && (
+          <Modal title="Closing position" onClose={() => {}}>
+            <p className="muted">
+              Closing your copy of this {call.symbol} {call.side}. Waiting for the exchange to
+              confirm. This window closes by itself when it does.
+            </p>
+          </Modal>
+        )}
       </div>
     );
   }

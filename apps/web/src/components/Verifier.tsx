@@ -23,13 +23,16 @@ const EXAMPLES = [
   "a Solana transaction signature",
 ];
 
+/** A batch that simply hasn't been written to the chain yet isn't a failure: everything else can still be proven. */
+const isPending = (c: LookupCheck) => !c.ok && c.detail === "not anchored yet";
+
 function Checks({ checks }: { checks: LookupCheck[] }) {
   return (
     <ul className="checks">
       {checks.map((c) => (
-        <li key={c.name} className={c.ok ? "pass" : "fail"}>
+        <li key={c.name} className={c.ok ? "pass" : isPending(c) ? "pending" : "fail"}>
           <span className="mark" aria-hidden="true">
-            {c.ok ? "✓" : "✗"}
+            {c.ok ? "✓" : isPending(c) ? "…" : "✗"}
           </span>
           <span>
             {c.name}
@@ -41,8 +44,15 @@ function Checks({ checks }: { checks: LookupCheck[] }) {
   );
 }
 
-const verdict = (checks: LookupCheck[]) =>
-  checks.length > 0 && checks.every((c) => c.ok) ? "pass" : "fail";
+const verdict = (checks: LookupCheck[]): "pass" | "pending" | "fail" => {
+  if (checks.length === 0 || checks.some((c) => !c.ok && !isPending(c))) return "fail";
+  return checks.some(isPending) ? "pending" : "pass";
+};
+const VERDICT_TEXT = {
+  pass: "Verified in your browser",
+  pending: "Verified · waiting for on-chain anchor",
+  fail: "Something doesn't check out",
+};
 
 export function Verifier() {
   const initial = new URLSearchParams(window.location.search).get("q") ?? "";
@@ -149,6 +159,9 @@ export function Verifier() {
       setErr((e as Error).message);
     }
   }
+
+  const batchVerdict =
+    result?.type === "batch" ? verdict([...result.checks, ...(recheck?.checks ?? [])]) : "fail";
 
   return (
     <div className="stack narrow-page verifier">
@@ -277,9 +290,7 @@ export function Verifier() {
             </h2>
             {recheck && (
               <span className={`verdict ${verdict(recheck.checks)}`}>
-                {verdict(recheck.checks) === "pass"
-                  ? "Verified in your browser"
-                  : "Something doesn't check out"}
+                {VERDICT_TEXT[verdict(recheck.checks)]}
               </span>
             )}
           </div>
@@ -297,12 +308,12 @@ export function Verifier() {
             <h2>
               Batch {result.batch.id} · {result.batch.count} records
             </h2>
-            <span
-              className={`verdict ${result.ok && (!recheck || verdict(recheck.checks) === "pass") ? "pass" : "fail"}`}
-            >
-              {result.ok && (!recheck || verdict(recheck.checks) === "pass")
+            <span className={`verdict ${batchVerdict}`}>
+              {batchVerdict === "pass"
                 ? "Checks out"
-                : "Something doesn't check out"}
+                : batchVerdict === "pending"
+                  ? "Checks out · waiting for on-chain anchor"
+                  : "Something doesn't check out"}
             </span>
           </div>
           <p className="muted small">Sealed {new Date(result.batch.createdMs).toLocaleString()}.</p>

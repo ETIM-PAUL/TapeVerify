@@ -5,6 +5,7 @@ import { type ActiveWallet, useWallet } from "../wallet-context";
 import { Connect } from "./Connect";
 import { Deposit } from "./Deposit";
 import { FollowPanel } from "./FollowPanel";
+import { Modal } from "./Modal";
 import { ReputationCard } from "./Reputation";
 import { Comments } from "./Social";
 import { SubscribeCard } from "./Subscriptions";
@@ -18,6 +19,8 @@ export function CallPage({ code }: { code: string }) {
   const [error, setError] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [account, setAccount] = useState<AccountData | null>(null);
+  const [closing, setClosing] = useState(false);
+  const [closeError, setCloseError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -48,6 +51,25 @@ export function CallPage({ code }: { code: string }) {
     const t = setInterval(load, 5000); // live price + status
     return () => clearInterval(t);
   }, [load, loadAccount]);
+
+  async function closeCall(id: string) {
+    setCloseError(null);
+    setClosing(true);
+    try {
+      await api.post(`/v1/calls/${id}/close`);
+      // Wait for the exit fill to be recorded (up to 60s).
+      for (let i = 0; i < 40; i++) {
+        const r = await api.get<CallDetail>(`/v1/calls/${code}`);
+        setDetail(r);
+        if (r.call.status === "closed") break;
+        await new Promise((res) => setTimeout(res, 1500));
+      }
+    } catch (e) {
+      setCloseError((e as Error).message);
+    } finally {
+      setClosing(false);
+    }
+  }
 
   if (error)
     return (
@@ -107,6 +129,11 @@ export function CallPage({ code }: { code: string }) {
             {call.status === "expired" ? "follow window over" : call.status}
           </span>
           <span className="row">
+            {detail.viewer?.isOwner && (call.status === "open" || call.status === "expired") && (
+              <button type="button" disabled={closing} onClick={() => closeCall(call.id)}>
+                Close call
+              </button>
+            )}
             <a className="sharelink" href={shareLinks(call).x} target="_blank" rel="noreferrer">
               Share on X
             </a>
@@ -123,6 +150,15 @@ export function CallPage({ code }: { code: string }) {
             </a>
           </span>
         </div>
+        {closing && (
+          <Modal title="Closing call" onClose={() => {}}>
+            <p className="muted">
+              Closing your {call.symbol} {call.side}. Waiting for the exchange to confirm the close.
+              This window closes by itself when it does.
+            </p>
+          </Modal>
+        )}
+        {closeError && <p className="error">{closeError}</p>}
         <p className="muted">
           by {trader} · {call.trader.chain}
         </p>

@@ -9,6 +9,7 @@ import {
   type User,
 } from "../api";
 import { shortAddr, usd } from "../format";
+import { FollowedCalls } from "./FollowedCalls";
 import { FundsModal, type FundsTab } from "./FundsModal";
 import { HandleForm } from "./HandleForm";
 import { History } from "./History";
@@ -139,6 +140,7 @@ export function Account({ user, onExpired }: { user: User; onExpired: () => void
             )}
           </div>
           <MyCalls calls={calls} onChange={load} />
+          <FollowedCalls />
           <History txs={txs} />
         </div>
         <aside className="stack">

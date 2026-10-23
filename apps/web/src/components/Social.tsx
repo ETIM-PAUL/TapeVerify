@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ApiError,
   api,
@@ -9,6 +9,7 @@ import {
   type VaultOut,
 } from "../api";
 import { usd } from "../format";
+import { Pager } from "./Pager";
 
 const ago = (t: number) => {
   const s = Math.max(0, Math.round((Date.now() - t) / 1000));
@@ -68,25 +69,84 @@ export function FollowTrader({
 
 // ── Feed ──
 
+const HUES = [38, 162, 205, 265, 330, 12, 95];
+const hue = (name: string) =>
+  HUES[[...name].reduce((n, ch) => n + ch.charCodeAt(0), 0) % HUES.length];
+
+function Avatar({ name, ref_ }: { name: string; ref_: string }) {
+  return (
+    <a
+      className="ev-avatar"
+      style={{ ["--h" as string]: hue(name) }}
+      href={`/t/${ref_}`}
+      tabIndex={-1}
+      aria-hidden="true"
+    >
+      {name
+        .replace(/[^a-z0-9]/gi, "")
+        .slice(0, 2)
+        .toUpperCase() || "?"}
+    </a>
+  );
+}
+
+const move = (side: "long" | "short", entry: string, exit: string) => {
+  const e = Number(entry);
+  const x = Number(exit);
+  if (!(e > 0) || !(x > 0)) return null;
+  return ((side === "long" ? x - e : e - x) / e) * 100;
+};
+
+function Stat({ label, value, tone }: { label: string; value: string; tone?: "ok" | "error" }) {
+  return (
+    <div className="ev-stat">
+      <span className="muted small">{label}</span>
+      <b className={tone}>{value}</b>
+    </div>
+  );
+}
+
 export function EventRow({ e }: { e: FeedEvent }) {
-  const who = (
-    <>
-      <a href={`/t/${e.trader.ref}`}>{e.trader.name}</a>{" "}
-      {e.trader.verify?.clean ? (
-        <span className="badge clean">Clean record</span>
-      ) : e.trader.verify?.underReview ? (
-        <span className="badge review">Under review</span>
-      ) : null}
-    </>
+  const head = (tag: string, tone: string) => (
+    <div className="ev-head">
+      <Avatar name={e.trader.name} ref_={e.trader.ref} />
+      <div className="ev-who">
+        <a href={`/t/${e.trader.ref}`} className="ev-name">
+          {e.trader.name}
+        </a>
+        {e.trader.verify?.clean ? (
+          <span className="badge clean">Clean record</span>
+        ) : e.trader.verify?.underReview ? (
+          <span className="badge review">Under review</span>
+        ) : null}
+      </div>
+      <span className={`ev-tag ${tone}`}>{tag}</span>
+      <span className="muted small ev-time">{ago(e.at)}</span>
+    </div>
   );
   if (e.trade) {
-    const win = Number(e.trade.netPnl) >= 0;
+    const t = e.trade;
+    const win = Number(t.netPnl) >= 0;
+    const pct = move(t.side, t.entryPrice, t.exitPrice);
     return (
-      <li>
-        {who} closed a {e.trade.side} {e.trade.symbol}:{" "}
-        <b className={win ? "ok" : "error"}>{usd(e.trade.netPnl)}</b>
-        {e.trade.liquidated ? " (liquidated)" : ""}{" "}
-        <span className="muted small">verified from Strike fills · {ago(e.at)}</span>
+      <li className={`event ${win ? "win" : "loss"}`}>
+        {head("Result", win ? "ok" : "err")}
+        <div className="ev-body">
+          <div className="ev-title">
+            <span className={`side ${t.side}`}>{t.side}</span>
+            <b>{t.symbol}</b>
+            {t.liquidated && <span className="badge flag">Liquidated</span>}
+          </div>
+          <div className="ev-stats">
+            <Stat label="Entry" value={usd(t.entryPrice)} />
+            <Stat label="Exit" value={usd(t.exitPrice)} />
+            {pct !== null && (
+              <Stat label="Price move" value={`${pct >= 0 ? "+" : ""}${pct.toFixed(2)}%`} />
+            )}
+            <Stat label="Net PnL" value={usd(t.netPnl)} tone={win ? "ok" : "error"} />
+          </div>
+          <span className="muted small">Verified from Strike fills</span>
+        </div>
       </li>
     );
   }
@@ -94,28 +154,102 @@ export function EventRow({ e }: { e: FeedEvent }) {
   if (!c) return null;
   if (c.locked) {
     return (
-      <li>
-        {who} posted a <span className="premium-tag">subscribers only</span> call on{" "}
-        <a href={`/call/${c.code}`}>{c.symbol}</a> <span className="muted small">{ago(e.at)}</span>
+      <li className="event">
+        {head("Premium", "prem")}
+        <div className="ev-body">
+          <div className="ev-title">
+            <b>{c.symbol}</b>
+            <span className="premium-tag">subscribers only</span>
+          </div>
+          <a className="ev-link" href={`/call/${c.code}`}>
+            View call
+          </a>
+        </div>
       </li>
     );
   }
+  const opened = e.kind === "call_opened";
   return (
-    <li>
-      {who} {e.kind === "call_opened" ? "opened" : "closed"}{" "}
-      <a href={`/call/${c.code}`}>
-        {c.side} {c.symbol} {c.leverage}x
-      </a>
-      {e.kind === "call_opened"
-        ? ` at ${usd(c.entryPrice)}`
-        : c.exitPrice
-          ? ` at ${usd(c.exitPrice)}${c.exitReason ? ` (${c.exitReason})` : ""}`
-          : ""}{" "}
-      <span className="muted small">
-        {c.comments > 0 ? `${c.comments} comments · ` : ""}
-        {ago(e.at)}
-      </span>
+    <li className="event">
+      {head(opened ? "Opened" : "Closed", opened ? "open" : "closed")}
+      <div className="ev-body">
+        <div className="ev-title">
+          {c.side && <span className={`side ${c.side}`}>{c.side}</span>}
+          <b>{c.symbol}</b>
+          {c.leverage ? <span className="muted">{c.leverage}x</span> : null}
+          {c.status && (
+            <span className={`ev-state ${c.status}`}>
+              {c.status === "expired"
+                ? "Follow window over"
+                : c.status === "open"
+                  ? "Live"
+                  : "Closed"}
+            </span>
+          )}
+        </div>
+        <div className="ev-stats">
+          {opened && !c.exitPrice ? (
+            <Stat label="Entry" value={usd(c.entryPrice)} />
+          ) : c.exitPrice ? (
+            <>
+              {c.entryPrice && <Stat label="Entry" value={usd(c.entryPrice)} />}
+              <Stat label="Exit" value={usd(c.exitPrice)} />
+              {c.exitReason && <Stat label="Closed by" value={c.exitReason.toUpperCase()} />}
+            </>
+          ) : null}
+        </div>
+        <div className="ev-foot">
+          <a className="ev-link" href={`/call/${c.code}`}>
+            {opened && c.status === "open" ? "Follow this call" : "See the call"}
+          </a>
+          {c.comments > 0 && (
+            <span className="muted small">
+              {c.comments} {c.comments === 1 ? "comment" : "comments"}
+            </span>
+          )}
+        </div>
+      </div>
     </li>
+  );
+}
+
+const dayLabel = (t: number) => {
+  const d = new Date(t);
+  const today = new Date();
+  const diff = Math.round(
+    (new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime() -
+      new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()) /
+      86400000,
+  );
+  if (diff <= 0) return "Today";
+  if (diff === 1) return "Yesterday";
+  return d.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "short" });
+};
+
+export function EventList({ events }: { events: FeedEvent[] }) {
+  const groups: { day: string; items: FeedEvent[] }[] = [];
+  for (const e of events) {
+    const day = dayLabel(e.at);
+    const last = groups[groups.length - 1];
+    if (last && last.day === day) last.items.push(e);
+    else groups.push({ day, items: [e] });
+  }
+  return (
+    <div className="feedlist">
+      {groups.map((g) => (
+        <section key={g.day}>
+          <h3 className="ev-day">{g.day}</h3>
+          <ul>
+            {g.items.map((e) => (
+              <EventRow
+                key={`${e.kind}-${e.at}-${e.call?.code ?? e.trade?.symbol}-${e.trader.ref}`}
+                e={e}
+              />
+            ))}
+          </ul>
+        </section>
+      ))}
+    </div>
   );
 }
 
@@ -123,11 +257,17 @@ export function Feed({ signedIn }: { signedIn: boolean }) {
   const [scope, setScope] = useState<"following" | "all">(signedIn ? "following" : "all");
   const [events, setEvents] = useState<FeedEvent[] | null>(null);
   const [next, setNext] = useState<number | null>(null);
+  const [type, setType] = useState<"all" | "opened" | "closed" | "results">("all");
+  const [page, setPage] = useState(0);
+  const [size, setSize] = useState(10);
+  const [paging, setPaging] = useState(false);
+  const pageRef = useRef(0);
+  pageRef.current = page;
   const load = useCallback(
     (before?: number) =>
       api
         .get<{ events: FeedEvent[]; next: number | null }>(
-          `/v1/feed?scope=${scope}${before ? `&before=${before}` : ""}`,
+          `/v1/feed?scope=${scope}&limit=50${before ? `&before=${before}` : ""}`,
         )
         .then((r) => {
           setEvents((old) => (before ? [...(old ?? []), ...r.events] : r.events));
@@ -137,10 +277,28 @@ export function Feed({ signedIn }: { signedIn: boolean }) {
   );
   useEffect(() => {
     setEvents(null);
+    setPage(0);
     load().catch(() => setEvents([]));
-    const t = setInterval(() => load().catch(() => {}), 30_000);
+    // Only refresh the newest events while looking at the first page, so paging isn't disturbed.
+    const t = setInterval(() => pageRef.current === 0 && load().catch(() => {}), 30_000);
     return () => clearInterval(t);
   }, [load]);
+  const shown = (events ?? []).filter(
+    (e) =>
+      type === "all" ||
+      (type === "results" ? Boolean(e.trade) : !e.trade && e.kind === `call_${type}`),
+  );
+  const last = Math.max(0, Math.ceil(shown.length / size) - 1);
+  const at = Math.min(page, last);
+  async function goTo(p: number) {
+    // Fetch more history when the next page runs past what is loaded.
+    if ((p + 1) * size > shown.length && next) {
+      setPaging(true);
+      await load(next).catch(() => {});
+      setPaging(false);
+    }
+    setPage(p);
+  }
   return (
     <div className="stack">
       <h1>Feed</h1>
@@ -166,29 +324,56 @@ export function Feed({ signedIn }: { signedIn: boolean }) {
           Everyone
         </button>
       </div>
-      <div className="card">
-        {events === null ? null : events.length === 0 ? (
-          <p className="muted">
-            {scope === "following"
-              ? "Nothing yet. Follow traders from their profiles, or switch to Everyone."
-              : "Nothing has happened yet."}
-          </p>
-        ) : (
-          <ul className="penalties">
-            {events.map((e) => (
-              <EventRow
-                key={`${e.kind}-${e.at}-${e.call?.code ?? e.trade?.symbol}-${e.trader.ref}`}
-                e={e}
-              />
-            ))}
-          </ul>
-        )}
-        {next && (
-          <button type="button" className="ghost" onClick={() => load(next)}>
-            Older
+      <div className="chips" role="group" aria-label="Event type">
+        {(["all", "opened", "closed", "results"] as const).map((k) => (
+          <button
+            key={k}
+            type="button"
+            className={`chip ${type === k ? "on" : ""}`}
+            aria-pressed={type === k}
+            onClick={() => {
+              setType(k);
+              setPage(0);
+            }}
+          >
+            {k === "all"
+              ? "All activity"
+              : k === "results"
+                ? "Verified results"
+                : `${k[0]?.toUpperCase()}${k.slice(1)}`}
           </button>
-        )}
+        ))}
       </div>
+      {events === null ? (
+        <div className="card">
+          <p className="muted">Loading…</p>
+        </div>
+      ) : shown.length === 0 ? (
+        <div className="card">
+          <p className="muted">
+            {events.length > 0
+              ? "Nothing of that type in the loaded activity."
+              : scope === "following"
+                ? "Nothing yet. Follow traders from their profiles, or switch to Everyone."
+                : "Nothing has happened yet."}
+          </p>
+        </div>
+      ) : (
+        <EventList events={shown.slice(at * size, (at + 1) * size)} />
+      )}
+      <Pager
+        page={at}
+        size={size}
+        sizes={[10, 20, 50]}
+        total={shown.length}
+        hasMore={Boolean(next)}
+        busy={paging}
+        onPage={goTo}
+        onSize={(n) => {
+          setSize(n);
+          setPage(0);
+        }}
+      />
     </div>
   );
 }
@@ -381,7 +566,15 @@ export function Connections() {
             {c.telegram.linked ? (
               <p className="ok">
                 Linked{c.telegram.username ? ` as @${c.telegram.username}` : ""}. Add @
-                {c.telegram.bot} to your group and send /tape there.
+                {c.telegram.bot} to your group and send /tape there.{" "}
+                <button
+                  type="button"
+                  className="ghost"
+                  onClick={() => api.del("/v1/me/telegram").then(load)}
+                  title="Use this Telegram account with a different TapeVerify account"
+                >
+                  Unlink
+                </button>
               </p>
             ) : (
               <>
