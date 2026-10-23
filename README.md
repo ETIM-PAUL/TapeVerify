@@ -6,12 +6,18 @@ TapeVerify lets traders post trades as shareable calls and lets anyone copy them
 
 Built for the Strike Hackathon on Strike Finance's Builder Codes API.
 
+- **Live demo (Strike testnet):** https://app-production-252e.up.railway.app
+- **Telegram bot:** [@tapeverify_bot](https://t.me/tapeverify_bot)
+- **Repository:** https://github.com/ETIM-PAUL/TapeVerify
+
 ## Contents
 
 - [The problem](#the-problem)
 - [The solution](#the-solution)
 - [Features](#features)
 - [How it uses Strike](#how-it-uses-strike)
+- [How a trade flows through Strike](#how-a-trade-flows-through-strike)
+- [Telegram bot](#telegram-bot)
 - [How verification works](#how-verification-works)
 - [Architecture](#architecture)
 - [Getting started](#getting-started)
@@ -72,6 +78,64 @@ TapeVerify earns only the builder fee on orders that actually trade, capped at w
 
 Real calls have been opened, filled and closed through TapeVerify on Strike's testnet.
 
+## How a trade flows through Strike
+
+**1. Connecting a user**
+
+1. TapeVerify generates a trade-only API wallet and asks Strike for a challenge (`POST /auth/builder/request-signature`) naming the builder code and the fee cap.
+2. The user signs it with their own Solana, Ethereum or Cardano wallet.
+3. Strike confirms it (`POST /auth/builder/verify-signature`). TapeVerify checks the approved fee isn't higher than the one shown, then stores the key encrypted.
+4. The user funds their Strike account through `/v2/deposit/quote`, `/v2/deposit/build-tx` and `/v2/deposit`.
+
+**2. Posting a call**
+
+1. The form loads the market's limits and mark price from `/v2/markets`.
+2. TapeVerify sets the leverage (`POST /v2/leverage`).
+3. It places the entry with the take-profit and stop-loss attached (`POST /v2/order/strategy`), with the `X-Builder-Fee-Bps` header.
+4. A worker reads the user's orders and fills (`/v2/history/order`, `/v2/history/fill`) and records the real entry price from the fill.
+
+**3. Copying a call**
+
+1. The follower's order goes through the same `/v2/order/strategy` call from their own account, with their own margin.
+2. Before sending it, TapeVerify checks the current mark price (from `/v2/markets`) against the caller's entry and blocks the copy if it has drifted too far.
+
+**4. Closing**
+
+1. A reduce-only market order (`POST /v2/order`) closes the position, and the leftover exit orders are cancelled (`DELETE /v2/order/cancel`).
+2. The exit price and result are recorded from the closing fills.
+
+**5. Proving the record**
+
+1. Workers stream the order book (`/ws/l3`, `/v2/l3/snapshot`) and prices (`/ws/price`) and backfill candles (`/v2/klines`).
+2. Each fill is scored against the order book at that moment.
+3. Closed trades are rebuilt from public fills, signed, batched and anchored on Solana.
+
+### Strike endpoints used
+
+| Area | Endpoints |
+|---|---|
+| Onboarding | `/auth/builder/request-signature`, `/auth/builder/verify-signature`, `/v2/time` |
+| Market data | `/v2/markets`, `/v2/markPrice`, `/v2/klines`, `/v2/depth`, `/v2/trades`, `/v2/fee-tiers`, `/v2/l3/snapshot`, `/ws/l3`, `/ws/price` |
+| Trading | `/v2/leverage`, `/v2/order/strategy`, `/v2/order`, `/v2/order/cancel`, `/v2/order/cancel-all` |
+| Account | `/v2/account`, `/v2/portfolio`, `/v2/positions`, `/v2/sub-accounts`, `/ws/user-api` |
+| History | `/v2/history/fill`, `/v2/history/order`, `/v2/history/funding`, `/v2/history/transaction` |
+| Funds | `/v2/deposit/quote`, `/v2/deposit/build-tx`, `/v2/deposit`, `/v2/withdraw/quote`, `/v2/withdraw` |
+| Vaults | `/v2/vaults` |
+
+## Telegram bot
+
+[@tapeverify_bot](https://t.me/tapeverify_bot) posts calls to Telegram groups, so people can follow a trade in one tap.
+
+| Command | What it does |
+|---|---|
+| `/link CODE` | Links your Telegram account to TapeVerify. Get the code under Connections in the app |
+| `/tape` | In a group, starts posting your calls there (group admins only) |
+| `/stop` | Stops posting to that group |
+| `/call CODE` | Shows a call in the chat, with a preview card and a Follow button |
+| `/help` | Lists the commands |
+
+Each opened or closed call is posted automatically with a live preview card. Posts go through an outbox, so a failed send retries instead of being lost.
+
 ## How verification works
 
 ```
@@ -131,7 +195,7 @@ Paste a call link, a record hash or a Solana transaction into the Verify page to
 ### Install
 
 ```sh
-git clone <repo-url> tapeverify && cd tapeverify
+git clone https://github.com/ETIM-PAUL/TapeVerify.git && cd TapeVerify
 cp .env.example .env     # set VAULT_KEK_HEX (openssl rand -hex 32) and BUILDER_CODE
 pnpm install
 pnpm db:up               # start PostgreSQL and Redis
