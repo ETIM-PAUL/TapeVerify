@@ -15,6 +15,7 @@ Built for the Strike Hackathon on Strike Finance's Builder Codes API.
 
 - [The problem](#the-problem)
 - [The solution](#the-solution)
+- [How it fits alongside Strike's copy trading](#how-it-fits-alongside-strikes-copy-trading)
 - [Features](#features)
 - [How it uses Strike](#how-it-uses-strike)
 - [How a trade flows through Strike](#how-a-trade-flows-through-strike)
@@ -49,6 +50,20 @@ TapeVerify replaces "trust us" with a record anyone can verify:
 - **Copy one trade at a time.** Followers choose which calls to copy, with their own margin and limits.
 
 TapeVerify earns only the builder fee on orders that actually trade, capped at what each user approved.
+
+## How it fits alongside Strike's copy trading
+
+Strike is adding native copy trading of top Hyperliquid traders. TapeVerify does a different job, and the two work side by side:
+
+| | Strike's copy trading | TapeVerify |
+|---|---|---|
+| Whose trades | Top Hyperliquid traders | Traders and creators on Strike |
+| What you copy | Everything the trader does | One call at a time, chosen by the follower |
+| Proof of the record | The trader's Hyperliquid stats | Rebuilt from Strike fills, signed, anchored on Solana and checked in your browser |
+| Follower protection | Not described | Price-drift limit, personal guardrails, front-running and wash-trade detection |
+| Creator earnings | Not described | Builder-fee share on clones, a strategy marketplace and paid subscriptions |
+
+In short: Strike's copy trading brings in proven traders from elsewhere, and TapeVerify proves and protects the traders building their record on Strike.
 
 ## Features
 
@@ -282,6 +297,7 @@ The suite covers the live runner under failure (an outage with a position open, 
 
 ## Roadmap
 
+- **Fair-execution audit for any Strike account.** Paste a wallet address, account ID or vault ID and check that account's orders against TapeVerify's recorded order book: fills at prices the book allowed, queue priority respected, and every fill accounted for. It uses Strike's bulk history exports (`POST /v2/orders/export` and `/v2/fills/export`, which return an account's complete history as one gzipped JSONL file), so it scales to market makers with hundreds of millions of orders, and it works for any trader, not just TapeVerify users
 - An API so other Strike builders can use the trust engine
 - Full matching-engine replay verification once Strike publishes the node's nonce-ordered message log
 - A mobile app
