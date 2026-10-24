@@ -7,6 +7,7 @@ TapeVerify lets traders post trades as shareable calls and lets anyone copy them
 Built for the Strike Hackathon on Strike Finance's Builder Codes API.
 
 - **Live demo (Strike testnet):** https://app-production-252e.up.railway.app
+- **Pitch deck:** https://app-production-252e.up.railway.app/deck.html
 - **Telegram bot:** [@tapeverify_bot](https://t.me/tapeverify_bot)
 - **Repository:** https://github.com/ETIM-PAUL/TapeVerify
 
@@ -17,6 +18,7 @@ Built for the Strike Hackathon on Strike Finance's Builder Codes API.
 - [Features](#features)
 - [How it uses Strike](#how-it-uses-strike)
 - [How a trade flows through Strike](#how-a-trade-flows-through-strike)
+- [Order-book history from Strike L3](#order-book-history-from-strike-l3)
 - [Telegram bot](#telegram-bot)
 - [How verification works](#how-verification-works)
 - [Architecture](#architecture)
@@ -71,7 +73,7 @@ TapeVerify earns only the builder fee on orders that actually trade, capped at w
 | **Builder fee** | Every call, copy and live-strategy order carries `X-Builder-Fee-Bps`, capped at the lower of the configured fee and what the user approved |
 | **Strategy orders** | `/v2/order/strategy` places the entry with its take-profit and stop-loss attached, so exits live on Strike |
 | **Public fill history** | The source of truth for every trade, stat and leaderboard rank |
-| **Order book and L3 data** | Each fill is scored against the order book at that moment |
+| **Order book and L3 data** | TapeVerify records Strike's L3 feed and keeps the order-book history, so each fill is scored against the book as it was at that moment |
 | **Deposits and withdrawals** | Quotes and transactions for Solana, Ethereum and Cardano wallets |
 | **Markets, mark prices, klines** | The call form, backtester, live runner and price ticker |
 | **Vaults** | The protocol vault powers the "Strike healthy" badge |
@@ -121,6 +123,24 @@ Real calls have been opened, filled and closed through TapeVerify on Strike's te
 | History | `/v2/history/fill`, `/v2/history/order`, `/v2/history/funding`, `/v2/history/transaction` |
 | Funds | `/v2/deposit/quote`, `/v2/deposit/build-tx`, `/v2/deposit`, `/v2/withdraw/quote`, `/v2/withdraw` |
 | Vaults | `/v2/vaults` |
+
+## Order-book history from Strike L3
+
+Strike's [L3 feed](https://docs.strikefinance.org/api/l3) shows the public order book order by order: a snapshot (`GET /v2/l3/snapshot`) plus a live stream (`{symbol}@l3` on `/ws/l3`). It only ever shows the book **now**. There is no historical or replay endpoint, so anything not recorded live is gone.
+
+TapeVerify's workers record it continuously and keep the history Strike doesn't:
+
+| Strike's bootstrap rule | What TapeVerify does |
+|---|---|
+| Subscribe to `/ws/l3`, then buffer updates before fetching the snapshot | Subscribes on connect and buffers from the first message |
+| Drop buffered updates at or below `last_sequence`, apply the rest in order | Does exactly that, and also restarts if the snapshot is older than the first buffered update |
+| On a sequence gap or a `clear`, stop and bootstrap again | Ends the recorded segment and starts a fresh one. It never guesses through a gap |
+| `order_id` is an opaque string, prices and sizes are decimal strings | Stored as given, with exact decimal maths |
+| `429` and `503` can happen | Retries the snapshot with backoff, then reconnects |
+
+Recordings are saved as gap-free segments with checkpoints, so the book can be rebuilt at any past moment. That is what lets TapeVerify score a fill against the exact book it traded into, long after the fact.
+
+**What L3 is not:** it is not the Strike Node's full message history. L3 covers visible order-book changes, with a sequence number per market. The node's nonce-ordered log of every order, deposit, withdrawal and liquidation is described in [Strike's docs](https://docs.strikefinance.org/perpetuals/strike-node) but isn't published yet.
 
 ## Telegram bot
 
@@ -263,7 +283,7 @@ The suite covers the live runner under failure (an outage with a position open, 
 ## Roadmap
 
 - An API so other Strike builders can use the trust engine
-- Full matching-engine replay verification once Strike's node history is public
+- Full matching-engine replay verification once Strike publishes the node's nonce-ordered message log
 - A mobile app
 - Portfolio-level and multi-asset strategies
 
