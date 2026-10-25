@@ -10,6 +10,7 @@ import type { DraftFn } from "./ai/translate.js";
 import type { ApiConfig } from "./config.js";
 import { ReconnectRequiredError, type StrikeGateway } from "./gateway.js";
 import { accountRoutes } from "./routes/account.js";
+import { auditRoutes } from "./routes/audit.js";
 import { authRoutes } from "./routes/auth.js";
 import { backtestsRoutes } from "./routes/backtests.js";
 import { callsRoutes } from "./routes/calls.js";
@@ -194,5 +195,6 @@ export async function buildApp(
   copyRoutes(app, d);
   subscriptionsRoutes(app, d);
   verifierRoutes(app, d);
+  auditRoutes(app, d);
   return app;
 }

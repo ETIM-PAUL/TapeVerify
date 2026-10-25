@@ -1,3 +1,4 @@
+export * from "./audit.js";
 export * from "./config.js";
 export * from "./db/index.js";
 export * from "./engine/index.js";

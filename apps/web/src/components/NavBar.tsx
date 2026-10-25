@@ -13,6 +13,7 @@ const LINKS: Array<[string, string]> = [
   ["/market", "Marketplace"],
   ["/studio", "Studio"],
   ["/verify", "Verify"],
+  ["/audit", "Audit"],
 ];
 
 const MENU: Array<[string, string]> = [

@@ -164,6 +164,23 @@ export class L3Book {
       });
   }
 
+  /**
+   * Where a resting order stands right now: the price it rests at, how many orders are queued ahead of it at that
+   * price, and the best price on its side. A fill that follows price-time priority hits an order with `ahead` 0
+   * whose price is the best on its side.
+   */
+  standing(id: string): { side: Side; price: string; ahead: number; bestPrice: string } | null {
+    const o = this.orders.get(id);
+    if (!o) return null;
+    const queue = this.levels[o.side].get(o.price) ?? [];
+    let best = o.price;
+    for (const p of this.levels[o.side].keys()) {
+      const better = o.side === "buy" ? compareDecimals(p, best) > 0 : compareDecimals(p, best) < 0;
+      if (better) best = p;
+    }
+    return { side: o.side, price: o.price, ahead: queue.indexOf(id), bestPrice: best };
+  }
+
   bestBid(): string | null {
     return this.sortedPrices("buy")[0] ?? null;
   }

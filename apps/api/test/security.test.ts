@@ -11,6 +11,7 @@ const PUBLIC_WRITES = new Set([
   "POST /v1/auth/challenge",
   "POST /v1/auth/verify",
   "POST /v1/auth/logout",
+  "POST /v1/audits", // anyone can ask for a public account to be audited; rate limited and de-duplicated
   "POST /v1/admin/emergency-stop", // operator token
   "POST /v1/admin/payouts", // operator token
   "POST /v1/admin/verify/findings/:id/review", // operator token

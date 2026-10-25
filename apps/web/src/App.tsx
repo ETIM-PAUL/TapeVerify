@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, type User } from "./api";
 import { Account } from "./components/Account";
+import { Audit } from "./components/Audit";
 import { CallPage } from "./components/CallPage";
 import { Connect } from "./components/Connect";
 import { Earnings } from "./components/Earnings";
@@ -54,6 +55,7 @@ export function App() {
   const isHealth = path === "/health";
   const isFeed = path === "/feed";
   const isVerify = path === "/verify";
+  const isAudit = path === "/audit";
   const isVerifyAdmin = path === "/admin/verify";
   const publicPage = Boolean(
     callCode ||
@@ -66,7 +68,8 @@ export function App() {
       isVerifyAdmin ||
       isHealth ||
       isFeed ||
-      isVerify,
+      isVerify ||
+      isAudit,
   );
   if (!ready && !publicPage) {
     return (
@@ -96,6 +99,8 @@ export function App() {
           <Subscriptions />
         ) : isVerify ? (
           <Verifier />
+        ) : isAudit ? (
+          <Audit />
         ) : isFeed ? (
           <Feed signedIn={Boolean(user)} />
         ) : path === "/notifications" && user ? (

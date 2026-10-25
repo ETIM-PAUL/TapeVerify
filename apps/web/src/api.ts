@@ -912,3 +912,52 @@ export type LookupOut =
       checks: LookupCheck[];
       ok: boolean;
     };
+
+export interface AuditFinding {
+  kind:
+    | "priority"
+    | "book_mismatch"
+    | "order_fills"
+    | "limit_price"
+    | "order_timing"
+    | "order_status";
+  symbol: string;
+  at: number;
+  fillId?: string;
+  orderId?: string;
+  detail: string;
+}
+export interface AuditReport {
+  generatedMs: number;
+  subject: { accountId: string | null; selector: { kind: string; value: string } };
+  source: "export" | "history";
+  sourceNote: string | null;
+  window: { fromMs: number; toMs: number };
+  coverage: Array<{
+    symbol: string;
+    recordedMs: number;
+    windowMs: number;
+    gaps: number;
+    fills: number;
+  }>;
+  fills: {
+    inWindow: number;
+    checked: number;
+    clean: number;
+    unverifiable: Array<{ reason: string; count: number }>;
+    truncated: boolean;
+  };
+  orders: { checked: number; consistent: number; skipped: number };
+  findings: AuditFinding[];
+  findingsTotal: number;
+  verdict: "clean" | "findings" | "insufficient_coverage";
+  notes: string[];
+}
+export interface AuditJob {
+  id: string;
+  status: "queued" | "running" | "done" | "failed";
+  createdMs: number;
+  finishedMs: number | null;
+  error: string | null;
+  report: AuditReport | null;
+}

@@ -6,6 +6,7 @@ import {
   StrikeGateway,
 } from "@tapeverify/shared";
 import { getMarketSymbols, StrikeClient } from "@tapeverify/strike-sdk";
+import { processAudits } from "./audit/run.js";
 import { CallTracker } from "./calls/tracker.js";
 import { loadWorkerConfig } from "./config.js";
 import { FillsIngester } from "./fills/ingest.js";
@@ -67,6 +68,9 @@ const trustJobs = [
       { web: process.env.PUBLIC_WEB_URL ?? "http://localhost:5173" },
       log.child("social"),
     ),
+  ),
+  new Every("fair-execution audits", log.child("audit"), 5_000, () =>
+    processAudits(pool, { baseUrl: strike.urls.api, log: log.child("audit") }),
   ),
   new Every("fair-fill scoring", log.child("fairfill"), 60_000, () =>
     scoreFills(pool, log.child("fairfill")),
